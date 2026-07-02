@@ -91,18 +91,21 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .btn-warning { background: #f59e0b; color: #fff; }
 .btn-warning:hover:not(:disabled) { background: #d97706; }
 .btn-danger { background: #fee2e2; color: #dc2626; }
-.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 16px; animation: echo-fade-in 0.18s ease-out; }
-.modal-card { background: #fff; border-radius: 16px; padding: 22px 20px 18px; max-width: 360px; width: 100%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15); }
-.modal-title { font-size: 17px; font-weight: 600; color: #1f2937; margin-bottom: 6px; }
-.modal-sub { font-size: 13px; color: #6b7280; margin-bottom: 16px; }
-.modal-input-row { margin-bottom: 12px; }
-.modal-input-row input { width: 100%; box-sizing: border-box; border: 1.5px solid #d1d5db; border-radius: 10px; padding: 12px 14px; font-size: 18px; text-align: center; color: #1f2937; -webkit-appearance: none; appearance: none; outline: none; transition: border-color 0.15s; }
-.modal-input-row input:focus { border-color: #3b82f6; }
-.modal-quick { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
-.quick-btn { flex: 1; min-width: 0; background: #f3f4f6; color: #4b5563; border: none; border-radius: 8px; padding: 8px 4px; font-size: 12px; cursor: pointer; }
-.quick-btn:active { background: #e5e7eb; }
-.modal-actions { display: flex; gap: 8px; }
-.modal-actions .btn { flex: 1; padding: 12px; font-size: 15px; }
+.range-trigger { display: block; width: 100%; margin: 0 0 12px; padding: 11px 14px; background: #f9fafb; color: #4b5563; border: 1.5px dashed #d1d5db; border-radius: 10px; font-size: 14px; cursor: pointer; text-align: center; box-sizing: border-box; }
+.range-trigger:active { background: #f3f4f6; }
+.range-trigger.open { background: #eff6ff; color: #1d4ed8; border-color: #93c5fd; border-style: solid; }
+.range-panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px 14px 14px; margin: 0 0 14px; animation: echo-fade-in 0.2s ease-out; }
+.range-panel-title { font-size: 14px; font-weight: 600; color: #1f2937; margin-bottom: 12px; }
+.range-type-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.range-type-btn { flex: 1; min-width: 0; padding: 8px 4px; background: #f3f4f6; color: #4b5563; border: 1.5px solid transparent; border-radius: 8px; font-size: 13px; cursor: pointer; }
+.range-type-btn.active { background: #eff6ff; color: #1d4ed8; border-color: #3b82f6; font-weight: 600; }
+.range-num-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 13px; color: #4b5563; }
+.range-num-row span { white-space: nowrap; }
+.range-num-row input { flex: 1; min-width: 0; box-sizing: border-box; border: 1.5px solid #d1d5db; border-radius: 8px; padding: 9px 6px; font-size: 16px; text-align: center; outline: none; -webkit-appearance: none; appearance: none; }
+.range-num-row input:focus { border-color: #3b82f6; }
+.range-max-tip { font-size: 12px; color: #6b7280; margin-bottom: 14px; text-align: center; }
+.range-actions { display: flex; gap: 8px; }
+.range-actions .btn { flex: 1; padding: 11px; font-size: 14px; }
 @keyframes echo-fade-in { from { opacity: 0; } to { opacity: 1; } }
 .browse-list { display: flex; flex-direction: column; gap: 8px; }
 .browse-item { background: #fff; padding: 14px 16px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer; transition: all 0.2s; }
@@ -191,13 +194,18 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
   .browse-pagination button { background: #1f2937; color: #60a5fa; border-color: #374151; }
   .detail-option.correct { background: #14532d; border-color: #16a34a; }
   .detail-option.wrong-choice { background: #7f1d1d; border-color: #dc2626; }
-  .modal-card { background: #1f2937; color: #e5e7eb; }
-  .modal-title { color: #f3f4f6; }
-  .modal-sub { color: #9ca3af; }
-  .modal-input-row input { background: #374151; color: #e5e7eb; border-color: #4b5563; }
-  .modal-input-row input:focus { border-color: #60a5fa; }
-  .quick-btn { background: #374151; color: #d1d5db; }
-  .quick-btn:active { background: #4b5563; }
+  .modal-card { display: none; }
+  .range-trigger { background: #1f2937; color: #9ca3af; border-color: #374151; }
+  .range-trigger:active { background: #374151; }
+  .range-trigger.open { background: #1e3a8a; color: #93c5fd; border-color: #3b82f6; }
+  .range-panel { background: #1f2937; border-color: #374151; }
+  .range-panel-title { color: #f3f4f6; }
+  .range-type-btn { background: #374151; color: #d1d5db; }
+  .range-type-btn.active { background: #1e3a8a; color: #93c5fd; border-color: #3b82f6; }
+  .range-num-row { color: #d1d5db; }
+  .range-num-row input { background: #374151; color: #e5e7eb; border-color: #4b5563; }
+  .range-num-row input:focus { border-color: #60a5fa; }
+  .range-max-tip { color: #9ca3af; }
   .browse-toggle { color: #60a5fa; }
   .browse-toggle:active { color: #93c5fd; }
 }
@@ -346,8 +354,8 @@ function goHome() {
   if (state.quizMode === 'exam' && !state.examResult) {
     if (!confirm('考试进行中，确定要退出吗？已答题目将丢失。')) return;
   }
-  // 刷题进行中：静默保存当前进度（不弹窗）
-  if (state.quizMode === 'practice' && state.practiceType) {
+  // 刷题进行中：静默保存当前进度（不弹窗；范围模式不保存）
+  if (state.quizMode === 'practice' && state.practiceType && state.practiceType.indexOf('_range') === -1) {
     savePracticeProgress(state.practiceType);
   }
   state.quizMode = null;
@@ -435,6 +443,29 @@ function renderHome(main) {
     '</div>' +
   '</div>' +
   '<div class="section-title">练习模式</div>' +
+  '<button class="range-trigger" id="rangeTrigger" onclick="toggleRangePanel()">📌 自定义范围练习（按需点开）</button>' +
+  '<div class="range-panel" id="rangePanel" style="display:none;">' +
+    '<div class="range-panel-title">选择题型和题号范围</div>' +
+    '<div class="range-type-row" id="rangeTypeRow">' +
+      '<button class="range-type-btn active" data-type="all" onclick="selectRangeType(\'all\')">全部</button>' +
+      '<button class="range-type-btn" data-type="danxuan" onclick="selectRangeType(\'danxuan\')">单选</button>' +
+      '<button class="range-type-btn" data-type="duoxuan" onclick="selectRangeType(\'duoxuan\')">多选</button>' +
+      '<button class="range-type-btn" data-type="panduan" onclick="selectRangeType(\'panduan\')">判断</button>' +
+      '<button class="range-type-btn" data-type="budingxiang" onclick="selectRangeType(\'budingxiang\')">不定项</button>' +
+    '</div>' +
+    '<div class="range-num-row">' +
+      '<span>从</span>' +
+      '<input type="number" id="rangeStart" min="1" value="1" inputmode="numeric" />' +
+      '<span>到</span>' +
+      '<input type="number" id="rangeEnd" min="1" value="10" inputmode="numeric" />' +
+      '<span>题</span>' +
+    '</div>' +
+    '<div class="range-max-tip" id="rangeMaxTip">该题型共 0 题</div>' +
+    '<div class="range-actions">' +
+      '<button class="btn btn-secondary" onclick="toggleRangePanel()">取消</button>' +
+      '<button class="btn btn-primary" onclick="confirmRange()">开始练习</button>' +
+    '</div>' +
+  '</div>' +
   '<div class="mode-grid">' +
     '<div class="mode-card" onclick="startBrowse()">' +
       '<div class="mode-icon browse">📋</div>' +
@@ -658,77 +689,155 @@ function startPractice(type) {
     alert('该分类暂无题目');
     return;
   }
-  // 弹出"从第几题开始"选择器
-  showStartPicker(type, questions);
-}
-
-function showStartPicker(type, questions) {
+  // 静默恢复 saved 进度（无弹窗）；没有则从第 1 题开始
   const saved = loadPracticeProgress(type);
-  const lastIdx = (saved && saved.currentIdx != null) ? saved.currentIdx + 1 : 0;
-  const defaultStart = lastIdx > 0 ? lastIdx : 1;
-  const max = questions.length;
-  const typeName = { all: '全部', danxuan: '单选题', duoxuan: '多选题', panduan: '判断题', budingxiang: '不定项' }[type] || type;
-  let backdrop = document.getElementById('echoStartPickerBackdrop');
-  if (backdrop) backdrop.remove();
-  backdrop = document.createElement('div');
-  backdrop.id = 'echoStartPickerBackdrop';
-  backdrop.className = 'modal-backdrop';
-  backdrop.innerHTML =
-    '<div class="modal-card" onclick="event.stopPropagation()">' +
-      '<div class="modal-title">从第几题开始？</div>' +
-      '<div class="modal-sub">' + typeName + ' · 共 ' + max + ' 题' + (lastIdx > 0 ? ' · 上次刷到第 ' + lastIdx + ' 题' : '') + '</div>' +
-      '<div class="modal-input-row">' +
-        '<input type="number" id="echoStartPickerInput" min="1" max="' + max + '" value="' + defaultStart + '" inputmode="numeric" />' +
-      '</div>' +
-      '<div class="modal-quick">' +
-        (lastIdx > 0 ? '<button class="quick-btn" onclick="document.getElementById(\'echoStartPickerInput\').value=' + lastIdx + '">从上次继续</button>' : '') +
-        '<button class="quick-btn" onclick="document.getElementById(\'echoStartPickerInput\').value=1">从头开始</button>' +
-        '<button class="quick-btn" onclick="document.getElementById(\'echoStartPickerInput\').value=' + max + '">最后一题</button>' +
-      '</div>' +
-      '<div class="modal-actions">' +
-        '<button class="btn btn-secondary" onclick="closeStartPicker()">取消</button>' +
-        '<button class="btn btn-primary" onclick="confirmStartPicker(\'' + type + '\')">开始</button>' +
-      '</div>' +
-    '</div>';
-  backdrop.addEventListener('click', function () { closeStartPicker(); });
-  document.body.appendChild(backdrop);
-  const input = document.getElementById('echoStartPickerInput');
-  setTimeout(function () {
-    if (input) {
-      input.focus();
-      input.select();
+  let resumeIdx = 0;
+  let useAnswers = {};
+  let useSubmittedSet = {};
+  if (saved && Array.isArray(saved.qids) && saved.qids.length === questions.length) {
+    const qidToQ = {};
+    for (let i = 0; i < questions.length; i++) qidToQ[questions[i].id] = questions[i];
+    const savedAnswers = (saved.answers && typeof saved.answers === 'object') ? saved.answers : {};
+    const savedSubmittedSet = (saved.submittedSet && typeof saved.submittedSet === 'object') ? saved.submittedSet : {};
+    let allValid = true;
+    for (let i = 0; i < saved.qids.length; i++) {
+      const qid = saved.qids[i];
+      if (!qidToQ[qid]) { allValid = false; break; }
+      if (savedAnswers[qid] && Array.isArray(savedAnswers[qid])) useAnswers[qid] = savedAnswers[qid];
+      if (savedSubmittedSet[qid]) useSubmittedSet[qid] = savedSubmittedSet[qid];
     }
-  }, 50);
+    if (allValid) {
+      resumeIdx = Math.max(0, Math.min(saved.currentIdx || 0, questions.length - 1));
+    } else {
+      useAnswers = {};
+      useSubmittedSet = {};
+    }
+  }
+  state.questions = questions;
+  state.currentIdx = resumeIdx;
+  state.answers = useAnswers;
+  state.submitted = false;
+  state.submittedSet = useSubmittedSet;
+  state.practiceType = type;
+  state.quizMode = 'practice';
+  state.startTime = Date.now();
+  navigate('quiz');
 }
 
-function closeStartPicker() {
-  const b = document.getElementById('echoStartPickerBackdrop');
-  if (b) b.remove();
-}
+// ============ 自定义范围练习 ============
+let currentRangeType = 'all';
 
-function confirmStartPicker(type) {
-  const input = document.getElementById('echoStartPickerInput');
-  if (!input) return;
-  const raw = parseInt(input.value, 10);
-  let questions;
+function getRangeQuestions(type) {
   if (type === 'all') {
-    questions = [].concat(
+    return [].concat(
       QUESTIONS_DATA.danxuan || [],
       QUESTIONS_DATA.duoxuan || [],
       QUESTIONS_DATA.panduan || [],
       QUESTIONS_DATA.budingxiang || []
     );
-  } else {
-    questions = QUESTIONS_DATA[type] || [];
   }
-  const max = questions.length;
-  if (isNaN(raw) || raw < 1) {
-    alert('请输入 1 - ' + max + ' 之间的数字');
+  return QUESTIONS_DATA[type] || [];
+}
+
+function toggleRangePanel() {
+  const panel = document.getElementById('rangePanel');
+  const trigger = document.getElementById('rangeTrigger');
+  if (!panel || !trigger) return;
+  const isHidden = panel.style.display === 'none';
+  if (isHidden) {
+    panel.style.display = 'block';
+    trigger.classList.add('open');
+    updateRangeMaxTip();
+    setTimeout(function () { panel.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 50);
+  } else {
+    panel.style.display = 'none';
+    trigger.classList.remove('open');
+  }
+}
+
+function selectRangeType(type) {
+  currentRangeType = type;
+  const btns = document.querySelectorAll('.range-type-btn');
+  for (let i = 0; i < btns.length; i++) {
+    const t = btns[i].getAttribute('data-type');
+    if (t === type) btns[i].classList.add('active');
+    else btns[i].classList.remove('active');
+  }
+  updateRangeMaxTip();
+}
+
+function updateRangeMaxTip() {
+  const qs = getRangeQuestions(currentRangeType);
+  const max = qs.length;
+  const tip = document.getElementById('rangeMaxTip');
+  if (tip) tip.textContent = '该题型共 ' + max + ' 题';
+  const startInput = document.getElementById('rangeStart');
+  const endInput = document.getElementById('rangeEnd');
+  if (startInput) {
+    startInput.max = max;
+    if (parseInt(startInput.value, 10) > max) startInput.value = max;
+  }
+  if (endInput) {
+    endInput.max = max;
+    if (parseInt(endInput.value, 10) > max) endInput.value = max;
+  }
+}
+
+function confirmRange() {
+  const startInput = document.getElementById('rangeStart');
+  const endInput = document.getElementById('rangeEnd');
+  if (!startInput || !endInput) return;
+  const qs = getRangeQuestions(currentRangeType);
+  const max = qs.length;
+  if (max === 0) {
+    alert('该题型暂无题目');
     return;
   }
-  const idx = Math.min(Math.max(raw, 1), max);
-  closeStartPicker();
-  startPracticeAt(type, idx);
+  let start = parseInt(startInput.value, 10);
+  let end = parseInt(endInput.value, 10);
+  if (isNaN(start) || isNaN(end)) {
+    alert('请输入有效的题号');
+    return;
+  }
+  if (start < 1) start = 1;
+  if (end < 1) end = 1;
+  if (start > max) { alert('起始题号超出范围（最大 ' + max + '）'); return; }
+  if (end > max) { alert('结束题号超出范围（最大 ' + max + '）'); return; }
+  if (start > end) {
+    alert('起始题号不能大于结束题号');
+    return;
+  }
+  startPracticeAtRange(currentRangeType, start, end);
+}
+
+function startPracticeAtRange(type, startNum, endNum) {
+  const all = getRangeQuestions(type);
+  if (all.length === 0) {
+    alert('该题型暂无题目');
+    return;
+  }
+  const start = Math.max(1, startNum);
+  const end = Math.min(endNum, all.length);
+  const slice = all.slice(start - 1, end);
+  if (slice.length === 0) {
+    alert('所选范围没有题目');
+    return;
+  }
+  // 关闭 panel
+  const panel = document.getElementById('rangePanel');
+  const trigger = document.getElementById('rangeTrigger');
+  if (panel) panel.style.display = 'none';
+  if (trigger) trigger.classList.remove('open');
+  // 范围模式：使用独立 practiceType 以避免污染全量进度
+  state.questions = slice;
+  state.currentIdx = 0;
+  state.answers = {};
+  state.submitted = false;
+  state.submittedSet = {};
+  state.practiceType = type + '_range';
+  state.quizMode = 'practice';
+  state.startTime = Date.now();
+  navigate('quiz');
 }
 
 function startPracticeAt(type, startNum) {
