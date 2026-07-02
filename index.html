@@ -227,6 +227,16 @@ function savePracticeProgress(type) {
     localStorage.setItem(practiceKey(type), JSON.stringify(data));
   } catch (e) {}
 }
+function loadPracticeProgress(type) {
+  if (!type) return null;
+  try {
+    const s = localStorage.getItem(practiceKey(type));
+    if (!s) return null;
+    const obj = JSON.parse(s);
+    if (!obj || !Array.isArray(obj.qids) || obj.qids.length === 0) return null;
+    return obj;
+  } catch (e) { return null; }
+}
 function clearPracticeProgress(type) {
   if (!type) return;
   try { localStorage.removeItem(practiceKey(type)); } catch (e) {}
@@ -311,7 +321,10 @@ function goHome() {
   if (state.quizMode === 'exam' && !state.examResult) {
     if (!confirm('考试进行中，确定要退出吗？已答题目将丢失。')) return;
   }
-  // 刷题/错题集进行中返回首页，直接丢弃当前进度（不弹保存提示）
+  // 刷题进行中：静默保存当前进度（不弹窗）
+  if (state.quizMode === 'practice' && state.practiceType) {
+    savePracticeProgress(state.practiceType);
+  }
   state.quizMode = null;
   state.questions = [];
   state.currentIdx = 0;
@@ -590,13 +603,43 @@ function startPractice(type) {
     alert('该分类暂无题目');
     return;
   }
-  // 每次进入刷题都从第一题开始，旧的刷题进度直接覆盖（不再提示恢复）
-  clearPracticeProgress(type);
+  // 尝试恢复上次的刷题进度（静默，不弹提示）；没有进度就从第一题开始
+  const saved = loadPracticeProgress(type);
+  const qidToQ = {};
+  for (let i = 0; i < questions.length; i++) qidToQ[questions[i].id] = questions[i];
+  let resumeIdx = 0;
+  let useAnswers = {};
+  let useSubmittedSet = {};
+  let progressValid = false;
+  if (saved && Array.isArray(saved.qids) && saved.qids.length === questions.length) {
+    // 题目数量一致才恢复，避免题库更新后错位
+    const savedAnswers = (saved.answers && typeof saved.answers === 'object') ? saved.answers : {};
+    const savedSubmittedSet = (saved.submittedSet && typeof saved.submittedSet === 'object') ? saved.submittedSet : {};
+    let allValid = true;
+    for (let i = 0; i < saved.qids.length; i++) {
+      const qid = saved.qids[i];
+      if (!qidToQ[qid]) { allValid = false; break; }
+      if (savedAnswers[qid] && Array.isArray(savedAnswers[qid])) useAnswers[qid] = savedAnswers[qid];
+      if (savedSubmittedSet[qid]) useSubmittedSet[qid] = savedSubmittedSet[qid];
+    }
+    if (allValid) {
+      progressValid = true;
+      // 恢复起点：默认回到 saved.currentIdx
+      let target = (saved.currentIdx != null && saved.currentIdx > 0 && saved.currentIdx < questions.length) ? saved.currentIdx : 0;
+      // 如果有 submittedSet 信息，跳过已提交；否则用 currentIdx
+      if (Object.keys(useSubmittedSet).length > 0) {
+        for (let i = 0; i < questions.length; i++) {
+          if (!useSubmittedSet[questions[i].id]) { target = i; break; }
+        }
+      }
+      resumeIdx = target;
+    }
+  }
   state.questions = questions;
-  state.currentIdx = 0;
-  state.answers = {};
+  state.currentIdx = resumeIdx;
+  state.answers = useAnswers;
   state.submitted = false;
-  state.submittedSet = {};
+  state.submittedSet = useSubmittedSet;
   state.practiceType = type;
   state.quizMode = 'practice';
   state.startTime = Date.now();
