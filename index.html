@@ -166,6 +166,26 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .detail-option.correct .detail-option-key { background: #16a34a; color: #fff; }
 .detail-option.wrong-choice .detail-option-key { background: #dc2626; color: #fff; }
 .detail-option-text { flex: 1; font-size: 14px; line-height: 1.6; word-break: break-word; }
+/* v5.5: 考试结果答题详情列所有选项 */
+.result-options { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.result-option { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border: 1.5px solid #e5e7eb; border-radius: 8px; background: #fff; font-size: 13px; line-height: 1.5; }
+.result-option.correct { border-color: #16a34a; background: #dcfce7; }
+.result-option.wrong-choice { border-color: #dc2626; background: #fee2e2; }
+.result-option.missed { border-color: #d97706; background: #fef3c7; border-style: dashed; }
+.result-option-key { width: 20px; height: 20px; border-radius: 50%; background: #f3f4f6; color: #4b5563; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; margin-top: 1px; }
+.result-option.correct .result-option-key { background: #16a34a; color: #fff; }
+.result-option.wrong-choice .result-option-key { background: #dc2626; color: #fff; }
+.result-option.missed .result-option-key { background: #d97706; color: #fff; }
+.result-option-text { flex: 1; word-break: break-word; color: #1f2937; }
+.result-option-mark { font-size: 11px; padding: 1px 6px; border-radius: 4px; flex-shrink: 0; margin-top: 1px; font-weight: 600; }
+.result-option.correct .result-option-mark { background: #16a34a; color: #fff; }
+.result-option.wrong-choice .result-option-mark { background: #dc2626; color: #fff; }
+.result-option.missed .result-option-mark { background: #d97706; color: #fff; }
+.result-option-user-ans { display: flex; gap: 12px; font-size: 12px; color: #6b7280; margin-top: 8px; flex-wrap: wrap; padding: 6px 0; border-top: 1px dashed #e5e7eb; }
+.result-option-user-ans .ua-label { color: #6b7280; }
+.result-option-user-ans .ua-val { color: #1f2937; font-weight: 600; }
+.result-option-user-ans .ua-val.wrong { color: #dc2626; }
+.result-option-user-ans .ca-val { color: #16a34a; font-weight: 600; }
 @media (max-width: 480px) {
   .home-hero h1 { font-size: 19px; }
   .home-hero .stat-num { font-size: 20px; }
@@ -206,6 +226,17 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
   .browse-pagination button { background: #1f2937; color: #60a5fa; border-color: #374151; }
   .detail-option.correct { background: #14532d; border-color: #16a34a; }
   .detail-option.wrong-choice { background: #7f1d1d; border-color: #dc2626; }
+  /* v5.5: 暗色模式 result-option */
+  .result-option { background: #1f2937; border-color: #374151; }
+  .result-option.correct { background: #14532d; border-color: #16a34a; }
+  .result-option.wrong-choice { background: #7f1d1d; border-color: #dc2626; }
+  .result-option.missed { background: #78350f; border-color: #d97706; }
+  .result-option-key { background: #374151; color: #d1d5db; }
+  .result-option-text { color: #e5e7eb; }
+  .result-option-user-ans { color: #9ca3af; border-top-color: #374151; }
+  .result-option-user-ans .ua-val { color: #e5e7eb; }
+  .result-option-user-ans .ua-val.wrong { color: #fca5a5; }
+  .result-option-user-ans .ca-val { color: #86efac; }
   .modal-card { display: none; }
   .range-trigger { background: #1f2937; color: #9ca3af; border-color: #374151; }
   .range-trigger:active { background: #374151; }
@@ -1739,6 +1770,34 @@ function renderExamResult(main) {
     html += '<div class="browse-item">' +
       '<div class="browse-item-title">' + (i + 1) + '. ' + escapeHtml(d.q.question) + '</div>' +
       '<div class="browse-item-meta">' + meta + '</div>';
+    // v5.5: 列所有选项（用户选+对=绿 ✓你选；用户选+错=红 ✗你选；用户没选+正确答案=黄 漏选；其他普通）
+    if (d.q.options && d.q.options.length > 0) {
+      const correctKeySet = new Set((d.q.answer || '').split(''));
+      const userKeySet = new Set(d.userAns || []);
+      html += '<div class="result-options">';
+      for (let oi = 0; oi < d.q.options.length; oi++) {
+        const opt = d.q.options[oi];
+        const isUser = userKeySet.has(opt.key);
+        const isCorrectOpt = correctKeySet.has(opt.key);
+        let cls = 'result-option';
+        let mark = '';
+        if (isUser && isCorrectOpt) { cls += ' correct'; mark = '<div class="result-option-mark">✓ 你选</div>'; }
+        else if (isUser && !isCorrectOpt) { cls += ' wrong-choice'; mark = '<div class="result-option-mark">✗ 你选</div>'; }
+        else if (!isUser && isCorrectOpt) { cls += ' missed'; mark = '<div class="result-option-mark">漏选</div>'; }
+        html += '<div class="' + cls + '">' +
+          '<div class="result-option-key">' + escapeHtml(opt.key) + '</div>' +
+          '<div class="result-option-text">' + escapeHtml(opt.text) + '</div>' +
+          mark +
+        '</div>';
+      }
+      html += '</div>';
+    }
+    // v5.5: 答题小结
+    const userStrFinal = (d.userAns || []).slice().sort().join('') || '未作答';
+    html += '<div class="result-option-user-ans">' +
+      '<span><span class="ua-label">你的答案：</span><span class="ua-val' + (d.ok ? '' : ' wrong') + '">' + escapeHtml(userStrFinal) + '</span></span>' +
+      '<span><span class="ua-label">正确答案：</span><span class="ca-val">' + escapeHtml(d.q.answer || '') + '</span></span>' +
+    '</div>';
     if (d.q.analysis) {
       html += '<div class="analysis-block" style="margin-top:8px"><div class="lbl">答案解析</div>' + escapeHtml(d.q.analysis) + '</div>';
     }
