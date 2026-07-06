@@ -220,6 +220,23 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .bx-timer-bar .bx-timer-fill { height: 100%; background: linear-gradient(90deg, #f59e0b 0%, #dc2626 100%); transition: width .05s linear; width: 100%; }
 .bx-timer-bar .bx-timer-text { font-weight: 700; color: #dc2626; font-size: 16px; min-width: 48px; text-align: right; }
 .mode-icon.rush { background: linear-gradient(135deg, #f59e0b, #dc2626); color: #fff; }
+/* v4.9: 考试倒计时条 */
+.exam-timer-bar { background: #ecfdf5; border: 1.5px solid #10b981; border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; display: flex; align-items: center; gap: 12px; }
+.exam-timer-bar .exam-timer-label { font-weight: 600; color: #065f46; white-space: nowrap; }
+.exam-timer-bar .exam-timer-track { flex: 1; height: 10px; background: #d1fae5; border-radius: 5px; overflow: hidden; }
+.exam-timer-bar .exam-timer-fill { height: 100%; background: linear-gradient(90deg, #10b981 0%, #059669 100%); transition: width .2s linear; width: 100%; }
+.exam-timer-bar .exam-timer-text { font-weight: 700; color: #047857; font-size: 18px; min-width: 56px; text-align: right; font-variant-numeric: tabular-nums; }
+.exam-timer-bar.warn { background: #fffbeb; border-color: #f59e0b; }
+.exam-timer-bar.warn .exam-timer-label { color: #92400e; }
+.exam-timer-bar.warn .exam-timer-track { background: #fde68a; }
+.exam-timer-bar.warn .exam-timer-fill { background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%); }
+.exam-timer-bar.warn .exam-timer-text { color: #b45309; }
+.exam-timer-bar.danger { background: #fef2f2; border-color: #dc2626; animation: examTimerPulse 1s infinite; }
+.exam-timer-bar.danger .exam-timer-label { color: #991b1b; }
+.exam-timer-bar.danger .exam-timer-track { background: #fecaca; }
+.exam-timer-bar.danger .exam-timer-fill { background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%); }
+.exam-timer-bar.danger .exam-timer-text { color: #dc2626; }
+@keyframes examTimerPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); } 50% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); } }
   .range-num-row { color: #d1d5db; }
   .range-num-row input { background: #374151; color: #e5e7eb; border-color: #4b5563; }
   .range-num-row input:focus { border-color: #60a5fa; }
@@ -263,7 +280,10 @@ const state = {
   browseType: null,
   browsePage: 1,
   browsePageSize: 10,
-  wrongSetFilter: 'all'  // 'all' | 'danxuan' | 'duoxuan' | 'panduan' | 'budingxiang'
+  wrongSetFilter: 'all',  // 'all' | 'danxuan' | 'duoxuan' | 'panduan' | 'budingxiang'
+  examTimeLimit: 180,     // v4.9: 考试总限时秒数（3 分钟）
+  examDeadline: 0,        // v4.9: 考试截止时间戳（ms）
+  examTimer: null         // v4.9: 考试倒计时 setInterval 句柄
 };
 // 多套独立 storage：刷题/考试/错题集刷题/错题集本身 各自一份
 const STORAGE_KEY_PRACTICE_PREFIX = 'echo_quiz_practice_';
@@ -403,6 +423,7 @@ function navigate(view, params) {
 function goHome() {
   if (state.quizMode === 'exam' && !state.examResult) {
     if (!confirm('考试进行中，确定要退出吗？已答题目将丢失。')) return;
+    stopExamTimer();
   }
   // 刷题进行中：静默保存当前进度（不弹窗；范围模式不保存）
   if (state.quizMode === 'practice' && state.practiceType && state.practiceType.indexOf('_range') === -1) {
@@ -563,7 +584,7 @@ function renderHome(main) {
   '<div class="mode-grid">' +
     '<div class="mode-card" onclick="startExam()">' +
       '<div class="mode-icon exam">🏆</div>' +
-      '<div class="mode-info"><h3>模拟考试</h3><p>60 单项题 + 20 多选 + 20 判断 共 100 题，每题 1 分，60 分及格</p></div>' +
+      '<div class="mode-info"><h3>模拟考试</h3><p>60 单项题 + 20 多选 + 20 判断 共 100 题，每题 1 分，60 分及格</p><p style="color:#dc2626;font-weight:600;margin-top:4px">⏱ 限时 3 分钟，到时自动交卷</p></div>' +
     '</div>' +
     '<div class="mode-card" onclick="startBudingxiangRush()">' +
       '<div class="mode-icon rush">⚡</div>' +
@@ -952,7 +973,7 @@ function startExam() {
       return;
     }
   }
-  if (!confirm('考试规则：\n• 共 100 道题：60 道单项题 + 20 道多选 + 20 道判断\n• 每题 1 分，满分 100 分\n• 60 分及格\n• 单项题/判断：选完立即显示对错并锁定，不可更改\n• 多选/不定项：选完点"确认答案"后锁定\n• 答错的题自动加入"错题集"\n• 答题过程中可随时点"交卷"即时评分\n• 答完所有题后自动交卷\n\n点击"确定"开始考试')) return;
+  if (!confirm('考试规则：\n• 共 100 道题：60 道单项题 + 20 道多选 + 20 道判断\n• 每题 1 分，满分 100 分\n• 60 分及格\n• 单项题/判断：选完立即显示对错并锁定，不可更改\n• 多选/不定项：选完点"确认答案"后锁定\n• 答错的题自动加入"错题集"\n• 答题过程中可随时点"交卷"即时评分\n• 答完所有题后自动交卷\n• ⏱ 限时 3 分钟（180 秒），到时自动交卷（未答计 0 分）\n\n点击"确定"开始考试')) return;
   // 按题型分别随机抽，最后再整体洗牌一次（让题型在试卷中分布随机）
   let examQs = [];
   for (const t in EXAM_STRUCT) {
@@ -972,7 +993,42 @@ function startExam() {
   state.practiceType = null;
   state.quizMode = 'exam';
   state.startTime = Date.now();
+  state.examDeadline = state.startTime + state.examTimeLimit * 1000;
+  startExamTimer();
   navigate('quiz');
+}
+
+// ========== v4.9: 考试倒计时（3 分钟总限时）==========
+function startExamTimer() {
+  stopExamTimer();
+  state.examTimer = setInterval(function() {
+    if (state.quizMode !== 'exam') { stopExamTimer(); return; }
+    const el = document.getElementById('examTimerText');
+    const bar = document.getElementById('examTimerBar');
+    const wrap = document.getElementById('examTimerWrap');
+    if (!el || !bar || !wrap) return;
+    const remain = getExamRemainingMs();
+    const sec = Math.ceil(remain / 1000);
+    const mm = String(Math.floor(sec / 60)).padStart(2, '0');
+    const ss = String(sec % 60).padStart(2, '0');
+    el.textContent = mm + ':' + ss;
+    bar.style.width = (remain / (state.examTimeLimit * 1000) * 100) + '%';
+    wrap.classList.remove('warn', 'danger');
+    if (sec <= 30) wrap.classList.add('danger');
+    else if (sec <= 60) wrap.classList.add('warn');
+    if (remain <= 0) {
+      stopExamTimer();
+      alert('⏰ 3 分钟到，自动交卷！未作答题目将计 0 分。');
+      submitExam();
+    }
+  }, 200);
+}
+function stopExamTimer() {
+  if (state.examTimer) { clearInterval(state.examTimer); state.examTimer = null; }
+}
+function getExamRemainingMs() {
+  if (!state.examDeadline) return state.examTimeLimit * 1000;
+  return Math.max(0, state.examDeadline - Date.now());
 }
 
 // ========== 不定项快答（每轮 10 题，每题 5 秒） ==========
@@ -1106,6 +1162,10 @@ function renderQuiz(main) {
     setTimeout(function() { bxRushStartTimer(); }, 50);
     state.bxRushActive = false;
   }
+  // v4.9: 考试模式进入时确保 timer 在跑（render 后 DOM 才有 #examTimerText 元素）
+  if (state.quizMode === 'exam' && !state.examTimer && state.examDeadline) {
+    setTimeout(function() { startExamTimer(); }, 0);
+  }
   const q = state.questions[state.currentIdx];
   if (!q) return;
   const isMulti = q.type === 'duoxuan' || q.type === 'budingxiang';
@@ -1128,7 +1188,17 @@ function renderQuiz(main) {
   if (state.quizMode === 'budingxiang_rush') {
     bxTimerBar = '<div class="bx-timer-bar"><span class="bx-timer-label">⚡ 第 ' + (state.currentIdx + 1) + '/' + state.questions.length + ' 题</span><div class="bx-timer-track"><div class="bx-timer-fill" id="bxRushBar"></div></div><span class="bx-timer-text" id="bxRushTimer">5.0s</span></div>';
   }
-  let html = '<div class="quiz-bar">' +
+  // v4.9: 考试倒计时条
+  let examTimerBar = '';
+  if (isExam) {
+    const sec = Math.ceil(getExamRemainingMs() / 1000);
+    const mm = String(Math.floor(sec / 60)).padStart(2, '0');
+    const ss = String(sec % 60).padStart(2, '0');
+    const remainCls = sec <= 30 ? 'danger' : (sec <= 60 ? 'warn' : '');
+    examTimerBar = '<div class="exam-timer-bar ' + remainCls + '" id="examTimerWrap"><span class="exam-timer-label">⏱ 剩余时间</span><div class="exam-timer-track"><div class="exam-timer-fill" id="examTimerBar"></div></span><span class="exam-timer-text" id="examTimerText">' + mm + ':' + ss + '</span></div>';
+  }
+  // v4.9: 修复 v4.7 遗留 bug — bxTimerBar 之前没拼到 html，现在拼上
+  let html = bxTimerBar + examTimerBar + '<div class="quiz-bar">' +
     '<span class="progress">' + progress + '</span>' +
     '<span class="mode-badge ' + modeCls + '">' + modeLabel + '</span>' +
     '<span class="q-num">已答 ' + answeredCount + ' 题</span>' +
@@ -1529,6 +1599,7 @@ function trySubmitExam() {
   submitExam();
 }
 function submitExam() {
+  stopExamTimer();
   const answered = Object.keys(state.answers).filter(function(k) { return (state.answers[k] || []).length > 0; }).length;
   const unanswered = state.questions.length - answered;
   let confirmMsg = '确定要交卷吗？\n共 ' + state.questions.length + ' 题，已答 ' + answered + ' 题';
