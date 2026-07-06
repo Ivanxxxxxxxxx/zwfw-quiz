@@ -46,6 +46,15 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .empty { text-align: center; padding: 60px 20px; color: #9ca3af; }
 .empty-icon { font-size: 64px; margin-bottom: 16px; }
 .mode-info p { font-size: 13px; color: #6b7280; line-height: 1.5; }
+/* v5.3 考试限时选择 */
+.exam-time-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.exam-time-label { font-size: 13px; color: #4b5563; }
+.exam-time-opt { padding: 6px 12px; border: 1px solid #d1d5db; background: #fff; color: #4b5563; border-radius: 8px; font-size: 13px; cursor: pointer; transition: all 0.15s; }
+.exam-time-opt:hover { border-color: #3b82f6; color: #3b82f6; }
+.exam-time-opt.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+.exam-start-btn { margin-top: 10px; flex: none; }
+.mode-card-exam { cursor: default; align-items: flex-start; }
+.mode-card-exam:hover { transform: none; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
 .section-title { font-size: 16px; font-weight: 600; margin: 24px 0 12px; color: #374151; display: flex; align-items: center; gap: 6px; }
 .section-title::before { content: ''; width: 3px; height: 14px; background: #3b82f6; border-radius: 2px; }
 .category-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -282,6 +291,7 @@ const state = {
   browsePageSize: 10,
   wrongSetFilter: 'all',  // 'all' | 'danxuan' | 'duoxuan' | 'panduan' | 'budingxiang'
   examTimeLimit: 180,     // v4.9: 考试总限时秒数（3 分钟）
+  examTimeLimitChoice: 180,  // v5.3: 用户在 mode card 选中的限时（秒），0 表示不限时
   examDeadline: 0,        // v4.9: 考试截止时间戳（ms）
   examTimer: null         // v4.9: 考试倒计时 setInterval 句柄
 };
@@ -582,9 +592,19 @@ function renderHome(main) {
   html += '</div>' +
   '<div class="section-title">模拟考试</div>' +
   '<div class="mode-grid">' +
-    '<div class="mode-card" onclick="startExam()">' +
+    '<div class="mode-card mode-card-exam">' +
       '<div class="mode-icon exam">🏆</div>' +
-      '<div class="mode-info"><h3>模拟考试</h3><p>60 单项题 + 20 多选 + 20 判断 共 100 题，每题 1 分，60 分及格</p><p style="color:#dc2626;font-weight:600;margin-top:4px">⏱ 限时 3 分钟，到时自动交卷</p></div>' +
+      '<div class="mode-info">' +
+        '<h3>模拟考试</h3>' +
+        '<p>60 单项题 + 20 多选 + 20 判断 共 100 题，每题 1 分，60 分及格</p>' +
+        '<div class="exam-time-row">' +
+          '<span class="exam-time-label">限时：</span>' +
+          '<button class="exam-time-opt active" data-time="180" onclick="selectExamTime(180, this)">3 分钟</button>' +
+          '<button class="exam-time-opt" data-time="300" onclick="selectExamTime(300, this)">5 分钟</button>' +
+          '<button class="exam-time-opt" data-time="0" onclick="selectExamTime(0, this)">不限时</button>' +
+        '</div>' +
+        '<button class="btn btn-primary exam-start-btn" onclick="startExam(state.examTimeLimitChoice || 180)">开始考试</button>' +
+      '</div>' +
     '</div>' +
     '<div class="mode-card" onclick="startBudingxiangRush()">' +
       '<div class="mode-icon rush">⚡</div>' +
@@ -961,7 +981,19 @@ function startPracticeAt(type, startNum) {
   state.startTime = Date.now();
   navigate('quiz');
 }
-function startExam() {
+function selectExamTime(time, el) {
+  // v5.3: 用户在 mode card 选时段
+  state.examTimeLimitChoice = time;
+  const parent = el.parentNode;
+  const btns = parent.querySelectorAll('.exam-time-opt');
+  for (let i = 0; i < btns.length; i++) {
+    btns[i].classList.remove('active');
+  }
+  el.classList.add('active');
+}
+function startExam(timeLimit) {
+  // v5.3: timeLimit 可选，0 = 不限时；默认 180
+  if (typeof timeLimit === 'undefined' || timeLimit === null) timeLimit = 180;
   // 考试结构：60 单项题 + 20 多选 + 20 判断 = 100 题
   const EXAM_STRUCT = { danxuan: 60, duoxuan: 20, panduan: 20, budingxiang: 0 };
   // 各题型题数检查
@@ -973,7 +1005,14 @@ function startExam() {
       return;
     }
   }
-  if (!confirm('考试规则：\n• 共 100 道题：60 道单项题 + 20 道多选 + 20 道判断\n• 每题 1 分，满分 100 分\n• 60 分及格\n• 单项题/判断：选完立即显示对错并锁定，不可更改\n• 多选/不定项：选完点"确认答案"后锁定\n• 答错的题自动加入"错题集"\n• 答题过程中可随时点"交卷"即时评分\n• 答完所有题后自动交卷\n• ⏱ 限时 3 分钟（180 秒），到时自动交卷（未答计 0 分）\n\n点击"确定"开始考试')) return;
+  // v5.3: 根据 timeLimit 动态拼 confirm 弹窗
+  let timeRule = '';
+  if (timeLimit > 0) {
+    timeRule = '\n• ⏱ 限时 ' + timeLimit + ' 秒（' + (timeLimit / 60) + ' 分钟），到时自动交卷（未答计 0 分）';
+  } else {
+    timeRule = '\n• ⏱ 不限时，自己掌控节奏，答完手动交卷';
+  }
+  if (!confirm('考试规则：\n• 共 100 道题：60 道单项题 + 20 道多选 + 20 道判断\n• 每题 1 分，满分 100 分\n• 60 分及格\n• 单项题/判断：选完立即显示对错并锁定，不可更改\n• 多选/不定项：选完点"确认答案"后锁定\n• 答错的题自动加入"错题集"\n• 答题过程中可随时点"交卷"即时评分\n• 答完所有题后自动交卷' + timeRule + '\n\n点击"确定"开始考试')) return;
   // 按题型分别随机抽，最后再整体洗牌一次（让题型在试卷中分布随机）
   let examQs = [];
   for (const t in EXAM_STRUCT) {
@@ -993,8 +1032,14 @@ function startExam() {
   state.practiceType = null;
   state.quizMode = 'exam';
   state.startTime = Date.now();
-  state.examDeadline = state.startTime + state.examTimeLimit * 1000;
-  startExamTimer();
+  state.examTimeLimit = timeLimit;
+  // v5.3: timeLimit=0 表示不限时，deadline=0 不启动 timer
+  if (timeLimit > 0) {
+    state.examDeadline = state.startTime + state.examTimeLimit * 1000;
+    startExamTimer();
+  } else {
+    state.examDeadline = 0;
+  }
   navigate('quiz');
 }
 
