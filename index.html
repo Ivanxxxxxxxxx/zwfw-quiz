@@ -563,7 +563,7 @@ function renderHome(main) {
   '<div class="mode-grid">' +
     '<div class="mode-card" onclick="startExam()">' +
       '<div class="mode-icon exam">🏆</div>' +
-      '<div class="mode-info"><h3>模拟考试</h3><p>60 单选 + 20 多选 + 20 判断 共 100 题，每题 1 分，60 分及格</p></div>' +
+      '<div class="mode-info"><h3>模拟考试</h3><p>60 单项题 + 20 多选 + 20 判断 共 100 题，每题 1 分，60 分及格</p></div>' +
     '</div>' +
     '<div class="mode-card" onclick="startBudingxiangRush()">' +
       '<div class="mode-icon rush">⚡</div>' +
@@ -596,7 +596,7 @@ function getBrowseQuestions() {
       getQ('budingxiang') || []
     );
   }
-  return QUESTIONS_DATA[state.browseType] || [];
+  return getQ(state.browseType) || [];
 }
 function renderBrowse(main) {
   const all = getBrowseQuestions();
@@ -742,7 +742,7 @@ function startPractice(type) {
       getQ('budingxiang') || []
     );
   } else {
-    questions = QUESTIONS_DATA[type] || [];
+    questions = getQ(type) || [];
   }
   if (questions.length === 0) {
     alert('该分类暂无题目');
@@ -795,7 +795,7 @@ function getRangeQuestions(type) {
       getQ('budingxiang') || []
     );
   }
-  return QUESTIONS_DATA[type] || [];
+  return getQ(type) || [];
 }
 
 function toggleRangePanel() {
@@ -909,7 +909,7 @@ function startPracticeAt(type, startNum) {
       getQ('budingxiang') || []
     );
   } else {
-    questions = QUESTIONS_DATA[type] || [];
+    questions = getQ(type) || [];
   }
   const saved = loadPracticeProgress(type);
   const qidToQ = {};
@@ -941,24 +941,24 @@ function startPracticeAt(type, startNum) {
   navigate('quiz');
 }
 function startExam() {
-  // 考试结构：60 单选 + 20 多选 + 20 判断 = 100 题
+  // 考试结构：60 单项题 + 20 多选 + 20 判断 = 100 题
   const EXAM_STRUCT = { danxuan: 60, duoxuan: 20, panduan: 20, budingxiang: 0 };
   // 各题型题数检查
   for (const t in EXAM_STRUCT) {
     if (EXAM_STRUCT[t] === 0) continue;
-    const have = (QUESTIONS_DATA[t] || []).length;
+    const have = (getQ(t) || []).length;
     if (have < EXAM_STRUCT[t]) {
       alert('题库不足：' + t + ' 需要 ' + EXAM_STRUCT[t] + ' 题，目前只有 ' + have + ' 题，无法开始考试');
       return;
     }
   }
-  if (!confirm('考试规则：\n• 共 100 道题：60 道单选 + 20 道多选 + 20 道判断\n• 每题 1 分，满分 100 分\n• 60 分及格\n• 单选/判断：选完立即显示对错并锁定，不可更改\n• 多选/不定项：选完点"确认答案"后锁定\n• 答错的题自动加入"错题集"\n• 答题过程中可随时点"交卷"即时评分\n• 答完所有题后自动交卷\n\n点击"确定"开始考试')) return;
+  if (!confirm('考试规则：\n• 共 100 道题：60 道单项题 + 20 道多选 + 20 道判断\n• 每题 1 分，满分 100 分\n• 60 分及格\n• 单选/判断：选完立即显示对错并锁定，不可更改\n• 多选/不定项：选完点"确认答案"后锁定\n• 答错的题自动加入"错题集"\n• 答题过程中可随时点"交卷"即时评分\n• 答完所有题后自动交卷\n\n点击"确定"开始考试')) return;
   // 按题型分别随机抽，最后再整体洗牌一次（让题型在试卷中分布随机）
   let examQs = [];
   for (const t in EXAM_STRUCT) {
     const need = EXAM_STRUCT[t];
     if (need === 0) continue;
-    const pool = QUESTIONS_DATA[t] || [];
+    const pool = getQ(t) || [];
     examQs = examQs.concat(pickRandom(pool, need));
   }
   // 整体洗牌：让题型在试卷中随机出现
@@ -1248,7 +1248,7 @@ function selectOption(key, isMulti) {
     bxRushNextOrFinish();
     return;
   }
-  // 考试模式下，单选/判断题选完立即锁
+  // 考试模式下，单项题/判断题选完立即锁
   if (isExam && !isMulti) {
     state.examLocked[q.id] = true;
     // 答错则加入错题集
