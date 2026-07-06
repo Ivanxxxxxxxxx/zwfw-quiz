@@ -1335,25 +1335,25 @@ function selectOption(key, isMulti) {
       addToWrongSet(q.id);
     }
   }
-  // v5.0: 刷题/错题集模式下的单选/判断——点完选项立即跳下一题
+  // v5.2: 刷题/错题集/考试模式下的单选/判断——点完选项立即跳下一题
   // 多选/不定项跳过此分支（继续走原 render() 等用户点"提交答案"）
-  // 考试模式跳过（examLocked 已经处理，但保留手动"下一题"按钮让考生能回看）
   // 快答模式跳过（前面 if (isRush) 已 return）
-  if (!isMulti && (state.quizMode === 'practice' || state.quizMode === 'wrongset')) {
-    state.submitted = true;
-    state.submittedSet[q.id] = true;
-    // 答错加入错题集（刷题模式；错题集模式的话 addToWrongSet 是幂等的）
+  if (!isMulti && (state.quizMode === 'practice' || state.quizMode === 'wrongset' || state.quizMode === 'exam')) {
+    if (state.quizMode === 'practice' || state.quizMode === 'wrongset') {
+      state.submitted = true;
+      state.submittedSet[q.id] = true;
+      savePracticeProgress(state.practiceType);
+    }
+    // 答错加入错题集（考试/错题集模式上面已加；刷题模式首次加；幂等）
     if (!isAnswerCorrect(q, userAns)) {
       addToWrongSet(q.id);
     }
-    savePracticeProgress(state.practiceType);
     render();  // 先渲染：让用户看到选项高亮 + 答案对错（一帧后即跳）
     setTimeout(function() {
-      // 等待期间用户可能已切换模式（切到首页等），guard 一下
-      if (state.quizMode === 'practice' || state.quizMode === 'wrongset') {
-        nextQuestion();  // 末尾题会自动 showPracticeComplete
+      if (state.quizMode === 'practice' || state.quizMode === 'wrongset' || state.quizMode === 'exam') {
+        nextQuestion();  // 末尾题：考试自动 submitExam，其他 showPracticeComplete
       }
-    }, 0);  // v5.1: 0ms 立即跳（v5.0 是 600ms 用户嫌长）
+    }, 0);  // v5.1: 0ms 立即跳
     return;
   }
   render();
