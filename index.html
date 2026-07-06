@@ -1347,13 +1347,13 @@ function selectOption(key, isMulti) {
       addToWrongSet(q.id);
     }
     savePracticeProgress(state.practiceType);
-    render();  // 先渲染：让用户看到选项高亮 + 答案对错
+    render();  // 先渲染：让用户看到选项高亮 + 答案对错（一帧后即跳）
     setTimeout(function() {
       // 等待期间用户可能已切换模式（切到首页等），guard 一下
       if (state.quizMode === 'practice' || state.quizMode === 'wrongset') {
         nextQuestion();  // 末尾题会自动 showPracticeComplete
       }
-    }, 600);
+    }, 0);  // v5.1: 0ms 立即跳（v5.0 是 600ms 用户嫌长）
     return;
   }
   render();
