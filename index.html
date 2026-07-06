@@ -603,7 +603,7 @@ function renderHome(main) {
           '<button class="exam-time-opt" data-time="300" onclick="selectExamTime(300, this)">5 分钟</button>' +
           '<button class="exam-time-opt" data-time="0" onclick="selectExamTime(0, this)">不限时</button>' +
         '</div>' +
-        '<button class="btn btn-primary exam-start-btn" onclick="startExam(state.examTimeLimitChoice || 180)">开始考试</button>' +
+        '<button class="btn btn-primary exam-start-btn" onclick="startExam(getSelectedExamTime())">开始考试</button>' +
       '</div>' +
     '</div>' +
     '<div class="mode-card" onclick="startBudingxiangRush()">' +
@@ -991,6 +991,11 @@ function selectExamTime(time, el) {
   }
   el.classList.add('active');
 }
+// v5.4: 修复"不限时"按钮不生效 bug——内联表达式 `|| 180` 在 0 时错误回退
+function getSelectedExamTime() {
+  if (typeof state.examTimeLimitChoice === 'number') return state.examTimeLimitChoice;
+  return 180;
+}
 function startExam(timeLimit) {
   // v5.3: timeLimit 可选，0 = 不限时；默认 180
   if (typeof timeLimit === 'undefined' || timeLimit === null) timeLimit = 180;
@@ -1063,7 +1068,9 @@ function startExamTimer() {
     else if (sec <= 60) wrap.classList.add('warn');
     if (remain <= 0) {
       stopExamTimer();
-      alert('⏰ 3 分钟到，自动交卷！未作答题目将计 0 分。');
+      // v5.4: alert 文案根据 examTimeLimit 动态拼（不限时 0 不会触发 timer，所以这里只处理 180/300）
+    const min = Math.round(state.examTimeLimit / 60);
+    alert('⏰ ' + min + ' 分钟到，自动交卷！未作答题目将计 0 分。');
       submitExam();
     }
   }, 200);
