@@ -439,7 +439,7 @@ function getAnswerText(question) {
   for (let i = 0; i < question.options.length; i++) {
     map[question.options[i].key] = question.options[i].text;
   }
-  const keys = (question.answer || '').split('');
+  const keys = ansToStr(question.answer).split('');
   const parts = [];
   for (let i = 0; i < keys.length; i++) {
     const k = keys[i];
@@ -451,9 +451,14 @@ function getAnswerText(question) {
   }
   return parts.join('  ');
 }
+function ansToStr(a) {
+  if (Array.isArray(a)) return a.join('');
+  return a || '';
+}
+
 function isAnswerCorrect(q, userAns) {
   if (!userAns || userAns.length === 0) return false;
-  const correct = (q.answer || '').split('').sort().join('');
+  const correct = ansToStr(q.answer).split('').sort().join('');
   const user = userAns.slice().sort().join('');
   return correct === user;
 }
@@ -788,7 +793,7 @@ function renderBrowseDetail(main) {
     '</div>';
   }
   html += '</div>';
-  html += '<div class="answer-box"><div class="answer-label correct">正确答案</div><div><strong>' + escapeHtml((q.answer || '').split('').join(' ')) + '</strong> ' + escapeHtml(getAnswerText(q)) + '</div></div>';
+  html += '<div class="answer-box"><div class="answer-label correct">正确答案</div><div><strong>' + escapeHtml(ansToStr(q.answer).split('').join(' ')) + '</strong> ' + escapeHtml(getAnswerText(q)) + '</div></div>';
   if (q.analysis) {
     html += '<div class="analysis-block"><div class="lbl">答案解析</div>' + escapeHtml(q.analysis) + '</div>';
   }
@@ -1777,7 +1782,7 @@ function renderExamResult(main) {
       '<div class="browse-item-meta">' + meta + '</div>';
     // v5.5: 列所有选项（用户选+对=绿 ✓你选；用户选+错=红 ✗你选；用户没选+正确答案=黄 漏选；其他普通）
     if (d.q.options && d.q.options.length > 0) {
-      const correctKeySet = new Set((d.q.answer || '').split(''));
+      const correctKeySet = new Set(ansToStr(d.q.answer).split(''));
       const userKeySet = new Set(d.userAns || []);
       html += '<div class="result-options">';
       for (let oi = 0; oi < d.q.options.length; oi++) {
