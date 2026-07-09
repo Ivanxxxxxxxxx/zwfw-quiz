@@ -640,7 +640,7 @@ function renderHome(main) {
         '<p>60 单项题 + 20 多选 + 20 判断 共 100 题，每题 1 分，60 分及格</p>' +
         '<div class="exam-time-row">' +
           '<span class="exam-time-label">限时：</span>' +
-          '<button class="exam-time-opt active" data-time="180" onclick="selectExamTime(180, this)">3 分钟</button>' +
+          '<button class="exam-time-opt active" data-time="180" onclick="selectExamTime(180, this)">3 分钟</button><button class="exam-time-opt" data-time="200" onclick="selectExamTime(200, this)">200 秒</button>' +
           '<button class="exam-time-opt" data-time="300" onclick="selectExamTime(300, this)">5 分钟</button>' +
           '<button class="exam-time-opt" data-time="0" onclick="selectExamTime(0, this)">不限时</button>' +
         '</div>' +
@@ -1054,7 +1054,11 @@ function startExam(timeLimit) {
   // v5.3: 根据 timeLimit 动态拼 confirm 弹窗
   let timeRule = '';
   if (timeLimit > 0) {
-    timeRule = '\n• ⏱ 限时 ' + timeLimit + ' 秒（' + (timeLimit / 60) + ' 分钟），到时自动交卷（未答计 0 分）';
+    // v6.5: timeLimit 可能是非整分钟数（200 秒），需要动态算 X 分 Y 秒
+    const m = Math.floor(timeLimit / 60);
+    const s = timeLimit % 60;
+    const human = s === 0 ? (m + ' 分钟') : (m + ' 分 ' + s + ' 秒');
+    timeRule = '\n• ⏱ 限时 ' + timeLimit + ' 秒（' + human + '），到时自动交卷（未答计 0 分）';
   } else {
     timeRule = '\n• ⏱ 不限时，自己掌控节奏，答完手动交卷';
   }
@@ -1110,8 +1114,11 @@ function startExamTimer() {
     if (remain <= 0) {
       stopExamTimer();
       // v5.4: alert 文案根据 examTimeLimit 动态拼（不限时 0 不会触发 timer，所以这里只处理 180/300）
-    const min = Math.round(state.examTimeLimit / 60);
-    alert('⏰ ' + min + ' 分钟到，自动交卷！未作答题目将计 0 分。');
+    // v6.5: timeLimit 可能是非整分钟数（200 秒），需要动态算 X 分 Y 秒
+    const m2 = Math.floor(state.examTimeLimit / 60);
+    const s2 = state.examTimeLimit % 60;
+    const human2 = s2 === 0 ? (m2 + ' 分钟') : (m2 + ' 分 ' + s2 + ' 秒');
+    alert('⏰ ' + human2 + '到，自动交卷！未作答题目将计 0 分。');
       submitExam();
     }
   }, 200);
