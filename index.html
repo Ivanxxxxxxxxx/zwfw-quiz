@@ -1581,11 +1581,13 @@ function showPracticeComplete() {
     }
     html += '</div>';
   }
-  // 完成刷题/错题集后，清除对应进度
+  // 完成刷题/错题集后，清除对应进度；置空 quizMode/practiceType 防止 goHome 误重存
   clearPracticeProgress(state.practiceType);
   if (isWrongsetComplete) {
     state.wrongSetCurrentQids = [];
   }
+  state.quizMode = null;
+  state.practiceType = null;
   navigate('practice-complete');
   $('#mainContent').innerHTML = html;
 }
