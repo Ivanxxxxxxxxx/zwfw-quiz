@@ -1355,7 +1355,7 @@ function renderQuiz(main) {
     '</div>';
   }
   html += '</div>';
-  if (showAnswer) {
+  if (showAnswer && !isExam) { // v6.9: 考试模式不显示答案 box / 答案解析 / 考点来源；只保留选项对错高亮（绿/红）和 ✓/✗ mark
     const isCorrect = isAnswerCorrect(q, userAns);
     html += '<div class="answer-box ' + (isCorrect ? '' : 'wrong') + '">';
     html += '<div class="answer-label ' + (isCorrect ? 'correct' : 'wrong') + '">' + (isCorrect ? '✓ 回答正确' : '✗ 回答错误') + '</div>';
