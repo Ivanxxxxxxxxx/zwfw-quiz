@@ -1471,6 +1471,9 @@ function confirmMultiAnswer() {
     if (!isAnswerCorrect(q, userAns)) {
       addToWrongSet(q.id);
     }
+    // v6.6: 考试模式多选题提交后不显示答案解析，立即跳下一题（与单选/判断行为一致；末小题 nextQuestion 会自动 submitExam）
+    nextQuestion();
+    return;
   }
   if (isWrongset) {
     if (isAnswerCorrect(q, userAns)) {
