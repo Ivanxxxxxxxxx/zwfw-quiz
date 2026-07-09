@@ -326,7 +326,14 @@ const state = {
   examTimeLimit: 180,     // v4.9: 考试总限时秒数（3 分钟）
   examTimeLimitChoice: 180,  // v5.3: 用户在 mode card 选中的限时（秒），0 表示不限时
   examDeadline: 0,        // v4.9: 考试截止时间戳（ms）
-  examTimer: null         // v4.9: 考试倒计时 setInterval 句柄
+  examTimer: null,        // v4.9: 考试倒计时 setInterval 句柄
+  examAutoNext: (function() { // v6.8: 考试模式答题后是否自动跳下一题；默认 true；从 LS 读取用户上次选择
+    try {
+      const v = localStorage.getItem('zwfw_examAutoNext');
+      if (v === null) return true;
+      return v === 'true' || v === true;
+    } catch (e) { return true; }
+  })()
 };
 // 多套独立 storage：刷题/考试/错题集刷题/错题集本身 各自一份
 const STORAGE_KEY_PRACTICE_PREFIX = 'echo_quiz_practice_';
@@ -643,6 +650,10 @@ function renderHome(main) {
           '<button class="exam-time-opt active" data-time="180" onclick="selectExamTime(180, this)">3 分钟</button><button class="exam-time-opt" data-time="200" onclick="selectExamTime(200, this)">200 秒</button>' +
           '<button class="exam-time-opt" data-time="300" onclick="selectExamTime(300, this)">5 分钟</button>' +
           '<button class="exam-time-opt" data-time="0" onclick="selectExamTime(0, this)">不限时</button>' +
+        '</div>' +
+        '<div class="exam-time-row">' +
+          '<span class="exam-time-label">跳题：</span>' +
+          '<button class="exam-time-opt' + (state.examAutoNext ? ' active' : '') + '" data-auto="true" onclick="selectExamAutoNext(true, this)">自动</button><button class="exam-time-opt' + (state.examAutoNext ? '' : ' active') + '" data-auto="false" onclick="selectExamAutoNext(false, this)">手动</button>' +
         '</div>' +
         '<button class="btn btn-primary exam-start-btn" onclick="startExam(getSelectedExamTime())">开始考试</button>' +
       '</div>' +
@@ -1032,6 +1043,17 @@ function selectExamTime(time, el) {
   }
   el.classList.add('active');
 }
+// v6.8: 考试模式"自动/手动跳题"开关
+function selectExamAutoNext(auto, el) {
+  state.examAutoNext = !!auto;
+  try { localStorage.setItem('zwfw_examAutoNext', JSON.stringify(!!auto)); } catch (e) {}
+  const parent = el.parentNode;
+  const btns = parent.querySelectorAll('.exam-time-opt');
+  for (let i = 0; i < btns.length; i++) {
+    btns[i].classList.remove('active');
+  }
+  el.classList.add('active');
+}
 // v5.4: 修复"不限时"按钮不生效 bug——内联表达式 `|| 180` 在 0 时错误回退
 function getSelectedExamTime() {
   if (typeof state.examTimeLimitChoice === 'number') return state.examTimeLimitChoice;
@@ -1063,7 +1085,7 @@ function startExam(timeLimit) {
   } else {
     timeRule = '\n• ⏱ 不限时，自己掌控节奏，答完手动交卷';
   }
-  if (!confirm('考试规则：\n• 共 100 道题：60 道单项题 + 20 道多选 + 20 道判断\n• 每题 1 分，满分 100 分\n• 60 分及格\n• 单项题/判断：选完立即显示对错并锁定，不可更改\n• 多选/不定项：选完点"确认答案"后锁定\n• 答错的题自动加入"错题集"\n• 答题过程中可随时点"交卷"即时评分\n• 答完所有题后自动交卷' + timeRule + '\n\n点击"确定"开始考试')) return;
+  if (!confirm('考试规则：\n• 共 100 道题：60 道单项题 + 20 道多选 + 20 道判断\n• 每题 1 分，满分 100 分\n• 60 分及格\n• 单项题/判断：选完立即显示对错并锁定，不可更改\n• 多选/不定项：选完点"确认答案"后锁定\n• 答错的题自动加入"错题集"\n• 答题过程中可随时点"交卷"即时评分\n• 跳题模式：' + (state.examAutoNext ? '答题后自动跳下一题' : '答题后需手动点【下一题】') + '\n• 答完所有题后自动交卷' + timeRule + '\n\n点击"确定"开始考试')) return;
   // v6.7: 按题型分别随机抽，拼接后即为试卷顺序（判断→单选→多选）
   let examQs = [];
   for (const t in EXAM_STRUCT) {
@@ -1448,7 +1470,11 @@ function selectOption(key, isMulti) {
     if (!isAnswerCorrect(q, userAns)) {
       addToWrongSet(q.id);
     }
-    render();  // 先渲染：让用户看到选项高亮 + 答案对错（一帧后即跳）
+    render();  // 先渲染：让用户看到选项高亮 + 答案对错
+    // v6.8: 考试模式手动跳题时不调 nextQuestion，让用户点"下一题"按钮
+    if (state.quizMode === 'exam' && state.examAutoNext === false) {
+      return;
+    }
     setTimeout(function() {
       if (state.quizMode === 'practice' || state.quizMode === 'wrongset' || state.quizMode === 'exam') {
         nextQuestion();  // 末尾题：考试自动 submitExam，其他 showPracticeComplete
@@ -1470,6 +1496,11 @@ function confirmMultiAnswer() {
     // 答错则加入错题集
     if (!isAnswerCorrect(q, userAns)) {
       addToWrongSet(q.id);
+    }
+    // v6.8: 考试模式手动跳题时不调 nextQuestion，让用户点"下一题"按钮
+    if (state.examAutoNext === false) {
+      render();  // 渲染答案+解析+考点来源
+      return;
     }
     // v6.6: 考试模式多选题提交后不显示答案解析，立即跳下一题（与单选/判断行为一致；末小题 nextQuestion 会自动 submitExam）
     nextQuestion();
