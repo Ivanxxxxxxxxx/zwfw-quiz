@@ -1256,6 +1256,19 @@ function bxRushTimeout() {
   }
   bxRushNextOrFinish();
 }
+// v6.13: 快答模式多选题提交——判分 + 跳下一题
+function bxRushSubmitMulti() {
+  if (state.quizMode !== 'budingxiang_rush') return;
+  const q = state.questions[state.currentIdx];
+  if (!q) return;
+  const userAns = state.answers[q.id] || [];
+  if (userAns.length === 0) return;
+  const remain = state.bxRushRemaining || 0;
+  const correct = isAnswerCorrect(q, userAns);
+  state.submittedSet[q.id] = remain;  // 存剩余时间（与 v4.7 不定项快答奖励分计算保持一致）
+  if (!correct) addToWrongSet(q.id);
+  bxRushNextOrFinish();
+}
 function bxRushNextOrFinish() {
   if (state.bxRushTimer) { clearInterval(state.bxRushTimer); state.bxRushTimer = null; }
   if (state.currentIdx + 1 >= state.questions.length) {
@@ -1285,7 +1298,8 @@ function finishBudingxiangRush() {
         totalScore += 1 + bonus;
         detail.push({ q: q, ok: true, remain: remain, points: 1 + bonus });
       } else {
-        detail.push({ q: q, ok: false, remain: remain, points: 0 });
+        // v6.13: 修 pre-existing bug — v4.7 引入时 `remain` 变量在 if 分支内 const，else 分支不可见，引用导致 ReferenceError
+        detail.push({ q: q, ok: false, remain: submitted, points: 0 });
       }
     } else {
       detail.push({ q: q, ok: false, remain: 0, points: 0, timeout: true });
@@ -1431,7 +1445,12 @@ function renderQuiz(main) {
     }
   }
   html += '</div><div class="quiz-actions">';
-  if (isExam) {
+  if (isRush) {
+    // v6.13: 快答模式按钮——多选题需要"提交答案"；单选/判断/不定项点完即跳，不显示按钮
+    if (q.type === 'duoxuan' && !state.submitted) {
+      html += '<button class="btn btn-primary" onclick="bxRushSubmitMulti()"' + (userAns.length === 0 ? ' disabled' : '') + '>提交答案</button>';
+    }
+  } else if (isExam) {
     // 考试模式：交卷按钮始终可点
     html += '<button class="btn btn-secondary" onclick="prevQuestion()"' + (state.currentIdx === 0 ? ' disabled' : '') + '>‹ 上一题</button>';
     html += '<button class="btn btn-warning" onclick="trySubmitExam()">交卷</button>';
@@ -1477,8 +1496,8 @@ function selectOption(key, isMulti) {
   if (locked) return;
   let userAns = state.answers[q.id] || [];
   if (isMulti) {
-    if (isRush) {
-      // 快答模式：不定项也按"点一项就锁定"（简化交互）
+    if (isRush && q.type === 'budingxiang') {
+      // v6.13: 快答模式"不定项"——v4.7 简化（点一项就锁定）
       userAns = [key];
     } else if (userAns.indexOf(key) !== -1) {
       userAns = userAns.filter(function(k) { return k !== key; });
@@ -1490,7 +1509,8 @@ function selectOption(key, isMulti) {
   }
   state.answers[q.id] = userAns;
   // v4.7 不定项快答：点完选项立即判分 + 跳下一题
-  if (isRush) {
+  // v6.13: 多选题不立即判分——需要用户点"提交答案"按钮
+  if (isRush && q.type !== 'duoxuan') {
     const remain = state.bxRushRemaining || 0;
     const correct = isAnswerCorrect(q, userAns);
     state.submittedSet[q.id] = remain;  // 存剩余时间
