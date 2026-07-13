@@ -1360,6 +1360,7 @@ function renderQuiz(main) {
   const userAns = state.answers[q.id] || [];
   const isExam = state.quizMode === 'exam';
   const isWrongset = state.quizMode === 'wrongset';
+  const isRush = state.quizMode === 'budingxiang_rush';  // v6.14: 补 v6.13 漏掉的声明（renderQuiz 顶部）
   const examThisLocked = isExam && state.examLocked[q.id];
   const showAnswer = (!isExam && state.submitted) || examThisLocked;
   const locked = showAnswer;  // 锁住：刷题已提交 或 考试本题已锁
