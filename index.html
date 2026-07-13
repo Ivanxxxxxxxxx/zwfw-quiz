@@ -1155,12 +1155,18 @@ function getExamRemainingMs() {
 
 // ========== 不定项快答（每轮 10 题，每题 5 秒） ==========
 function startBudingxiangRush() {
-  const pool = getQ('budingxiang');
+  // v6.10: 卷3 没有不定项时，自动 fallback 到卷内所有题型抽题
+  const bxPool = getQ('budingxiang');
+  const isFallback = bxPool.length < 10;
+  const pool = isFallback ? getAllQ() : bxPool;
   if (pool.length < 10) {
-    alert('当前卷不定项题库只有 ' + pool.length + ' 题，不足 10 题，无法开始快答');
+    alert('当前卷总题库只有 ' + pool.length + ' 题，不足 10 题，无法开始快答');
     return;
   }
-  if (!confirm('快答规则：\n• 共 10 道不定项选择题\n• 每题 5 秒倒计时，时间到自动判错\n• 答对得 1 分 + 剩余秒数 × 2 奖励分\n• 答错 0 分，自动加入错题集\n\n点击"确定"开始')) return;
+  const ruleMsg = isFallback
+    ? '快答规则（卷3 无不定项，从所有题型抽题）：\n• 共 10 道随机题（单选/多选/判断混合）\n• 每题 5 秒倒计时，时间到自动判错\n• 答对得 1 分 + 剩余秒数 × 2 奖励分\n• 答错 0 分，自动加入错题集\n\n点击"确定"开始'
+    : '快答规则：\n• 共 10 道不定项选择题\n• 每题 5 秒倒计时，时间到自动判错\n• 答对得 1 分 + 剩余秒数 × 2 奖励分\n• 答错 0 分，自动加入错题集\n\n点击"确定"开始';
+  if (!confirm(ruleMsg)) return;
   state.questions = pickRandom(pool, 10);
   state.currentIdx = 0;
   state.answers = {};
@@ -1170,6 +1176,7 @@ function startBudingxiangRush() {
   state.practiceType = null;
   state.quizMode = 'budingxiang_rush';
   state.bxRushActive = true;
+  state.bxRushSource = isFallback ? 'all' : 'budingxiang'; // v6.10: 'budingxiang' = 仅不定项, 'all' = 所有题型
   state.startTime = Date.now();
   navigate('quiz');
 }
@@ -1304,7 +1311,9 @@ function renderQuiz(main) {
   } else {
     answeredCount = Object.keys(state.answers).filter(function(k) { return (state.answers[k] || []).length > 0; }).length;
   }
-  const modeLabel = isExam ? '考试模式' : (isWrongset ? '错题集练习' : (state.quizMode === 'budingxiang_rush' ? '不定项快答' : '刷题模式'));
+  // v6.10: 区分快答题源（'budingxiang' / 'all'）
+  const bxSrc = state.quizMode === 'budingxiang_rush' ? (state.bxRushSource === 'all' ? 'all' : 'budingxiang') : '';
+  const modeLabel = isExam ? '考试模式' : (isWrongset ? '错题集练习' : (state.quizMode === 'budingxiang_rush' ? (bxSrc === 'all' ? '快答（所有题）' : '不定项快答') : '刷题模式'));
   const modeCls = isExam ? 'exam' : (isWrongset ? 'wrongset' : (state.quizMode === 'budingxiang_rush' ? 'rush' : ''));
   let bxTimerBar = '';
   if (state.quizMode === 'budingxiang_rush') {
