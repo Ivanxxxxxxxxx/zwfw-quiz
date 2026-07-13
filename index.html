@@ -552,6 +552,12 @@ function render() {
     backBtn.style.visibility = 'visible';
     backBtn.onclick = goHome;
     renderPracticeComplete(main);
+  } else if (state.view === 'budingxiang_rush_result') {
+    // v6.16: 修 v4.7 预存 bug — finishBudingxiangRush 调 navigate('budingxiang_rush_result') 后 render() 没有这个 view 的分支，导致结果页没渲染，用户卡在第 10 题
+    title.textContent = '快答成绩';
+    backBtn.style.visibility = 'visible';
+    backBtn.onclick = goHome;
+    renderBudingxiangRushResult(main);
   }
 }
 function renderPracticeComplete(main) {
