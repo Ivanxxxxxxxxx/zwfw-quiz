@@ -333,6 +333,13 @@ const state = {
       if (v === null) return true;
       return v === 'true' || v === true;
     } catch (e) { return true; }
+  })(),
+  bxRushTimerEnabled: (function() { // v6.11: 快答模式 5 秒倒计时是否开启；默认 true；从 LS 读取用户上次选择
+    try {
+      const v = localStorage.getItem('zwfw_bxRushTimer');
+      if (v === null) return true;
+      return v === 'true' || v === true;
+    } catch (e) { return true; }
   })()
 };
 // 多套独立 storage：刷题/考试/错题集刷题/错题集本身 各自一份
@@ -660,7 +667,14 @@ function renderHome(main) {
     '</div>' +
     '<div class="mode-card" onclick="startBudingxiangRush()">' +
       '<div class="mode-icon rush">⚡</div>' +
-      '<div class="mode-info"><h3>不定项快答</h3><p>每轮 10 题，每题 5 秒，答得越快分越高</p></div>' +
+      '<div class="mode-info">' +
+        '<h3>不定项快答</h3>' +
+        '<p>' + (state.bxRushTimerEnabled ? '每轮 10 题，每题 5 秒，答得越快分越高' : '每轮 10 题，无倒计时，答对 1 分') + '</p>' +
+        '<div class="exam-time-row" onclick="event.stopPropagation();">' +
+          '<span class="exam-time-label">倒计时：</span>' +
+          '<button class="exam-time-opt' + (state.bxRushTimerEnabled ? ' active' : '') + '" data-bxrt="true" onclick="event.stopPropagation(); selectBxRushTimer(true, this);">开</button><button class="exam-time-opt' + (state.bxRushTimerEnabled ? '' : ' active') + '" data-bxrt="false" onclick="event.stopPropagation(); selectBxRushTimer(false, this);">关</button>' +
+        '</div>' +
+      '</div>' +
     '</div>' +
   '</div>' +
   '<div class="section-title">题库统计</div>' +
@@ -1054,6 +1068,22 @@ function selectExamAutoNext(auto, el) {
   }
   el.classList.add('active');
 }
+// v6.11: 快答模式"倒计时开/关"开关
+function selectBxRushTimer(enabled, el) {
+  state.bxRushTimerEnabled = !!enabled;
+  try { localStorage.setItem('zwfw_bxRushTimer', JSON.stringify(!!enabled)); } catch (e) {}
+  const parent = el.parentNode;
+  const btns = parent.querySelectorAll('.exam-time-opt');
+  for (let i = 0; i < btns.length; i++) {
+    btns[i].classList.remove('active');
+  }
+  el.classList.add('active');
+  // 同步更新 mode card 上的描述文字
+  const desc = parent.parentNode.querySelector('p');
+  if (desc) {
+    desc.textContent = enabled ? '每轮 10 题，每题 5 秒，答得越快分越高' : '每轮 10 题，无倒计时，答对 1 分';
+  }
+}
 // v5.4: 修复"不限时"按钮不生效 bug——内联表达式 `|| 180` 在 0 时错误回退
 function getSelectedExamTime() {
   if (typeof state.examTimeLimitChoice === 'number') return state.examTimeLimitChoice;
@@ -1183,6 +1213,11 @@ function startBudingxiangRush() {
 function bxRushStartTimer() {
   if (state.quizMode !== 'budingxiang_rush') return;
   if (state.bxRushTimer) { clearInterval(state.bxRushTimer); state.bxRushTimer = null; }
+  // v6.11: 倒计时关闭时不启动 setInterval，bxRushRemaining=0 → 答对无速度奖励分
+  if (!state.bxRushTimerEnabled) {
+    state.bxRushRemaining = 0;
+    return;
+  }
   state.bxRushQuestionStart = Date.now();
   state.bxRushRemaining = 5.0;
   state.bxRushTimer = setInterval(function() {
@@ -1316,8 +1351,12 @@ function renderQuiz(main) {
   const modeLabel = isExam ? '考试模式' : (isWrongset ? '错题集练习' : (state.quizMode === 'budingxiang_rush' ? (bxSrc === 'all' ? '快答（所有题）' : '不定项快答') : '刷题模式'));
   const modeCls = isExam ? 'exam' : (isWrongset ? 'wrongset' : (state.quizMode === 'budingxiang_rush' ? 'rush' : ''));
   let bxTimerBar = '';
-  if (state.quizMode === 'budingxiang_rush') {
+  // v6.11: 倒计时关闭时不渲染 timer bar
+  if (state.quizMode === 'budingxiang_rush' && state.bxRushTimerEnabled) {
     bxTimerBar = '<div class="bx-timer-bar"><span class="bx-timer-label">⚡ 第 ' + (state.currentIdx + 1) + '/' + state.questions.length + ' 题</span><div class="bx-timer-track"><div class="bx-timer-fill" id="bxRushBar"></div></div><span class="bx-timer-text" id="bxRushTimer">5.0s</span></div>';
+  } else if (state.quizMode === 'budingxiang_rush' && !state.bxRushTimerEnabled) {
+    // v6.11: 倒计时关闭时显示无倒计时的进度条
+    bxTimerBar = '<div class="bx-timer-bar"><span class="bx-timer-label">⚡ 第 ' + (state.currentIdx + 1) + '/' + state.questions.length + ' 题</span><span class="bx-timer-text">无倒计时</span></div>';
   }
   // v4.9: 考试倒计时条
   let examTimerBar = '';
