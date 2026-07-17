@@ -77,8 +77,8 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .q-num { font-size: 13px; color: #6b7280; }
 .question-text { font-size: 16px; line-height: 1.7; color: #1f2937; margin-bottom: 18px; word-break: break-word; }
 .options-list { display: flex; flex-direction: column; gap: 10px; }
-.option-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1.5px solid #e5e7eb; border-radius: 10px; cursor: pointer; transition: all 0.2s; background: #fff; }
-.option-item:hover { border-color: #93c5fd; background: #f0f7ff; }
+.option-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1.5px solid #e5e7eb; border-radius: 10px; transition: all 0.2s; background: #fff; }
+.option-item:hover { background: #fff; }
 .option-item.selected { border-color: #3b82f6; background: #eff6ff; }
 .option-item.correct { border-color: #16a34a; background: #dcfce7; }
 .option-item.wrong { border-color: #dc2626; background: #fee2e2; }
@@ -98,6 +98,13 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .analysis-block { background: #fffbeb; border-left: 3px solid #f59e0b; padding: 12px 14px; border-radius: 6px; margin-top: 10px; font-size: 13px; line-height: 1.7; color: #78350f; }
 .analysis-block .lbl { font-weight: 600; margin-bottom: 4px; color: #b45309; }
 .quiz-actions { display: flex; gap: 10px; margin-top: 16px; }
+.answer-keys { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-start; }
+.answer-key-btn { width: 48px; height: 48px; border-radius: 50%; border: 2px solid #d1d5db; background: #f9fafb; color: #374151; font-size: 18px; font-weight: 700; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
+.answer-key-btn:hover { border-color: #3b82f6; background: #eff6ff; color: #1d4ed8; }
+.answer-key-btn.selected { border-color: #3b82f6; background: #3b82f6; color: #fff; }
+.answer-key-btn.correct { border-color: #16a34a; background: #16a34a; color: #fff; }
+.answer-key-btn.wrong { border-color: #dc2626; background: #dc2626; color: #fff; }
+.answer-key-btn.locked { cursor: not-allowed; opacity: 0.6; }
 .btn { flex: 1; padding: 12px 18px; border-radius: 10px; font-size: 15px; font-weight: 500; transition: all 0.2s; }
 .btn-primary { background: #3b82f6; color: #fff; }
 .btn-primary:hover:not(:disabled) { background: #2563eb; }
@@ -208,12 +215,15 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
   .mode-info p, .browse-item-meta, .category-name, .result-tip, .result-stat .lbl, .quiz-bar .q-num { color: #9ca3af; }
   .question-text { color: #f3f4f6; }
   .option-item, .detail-option { background: #1f2937; border-color: #374151; }
-  .option-item:hover { background: #374151; border-color: #60a5fa; }
+  .option-item:hover { background: #1f2937; }
   .option-item.selected { background: #1e3a8a; border-color: #3b82f6; }
   .option-item.correct { background: #14532d; border-color: #16a34a; }
   .option-item.wrong { background: #7f1d1d; border-color: #dc2626; }
   .option-text, .detail-option-text { color: #e5e7eb; }
   .option-key, .detail-option-key { background: #374151; color: #d1d5db; }
+  .answer-key-btn { background: #374151; border-color: #4b5563; color: #d1d5db; }
+  .answer-key-btn:hover { background: #1e3a8a; border-color: #60a5fa; color: #93c5fd; }
+  .answer-key-btn.selected { background: #1e3a8a; border-color: #3b82f6; color: #fff; }
   .filter-chip { background: #1f2937; color: #d1d5db; border-color: #374151; }
   .filter-chip.active { background: #3b82f6; color: #fff; }
   .section-title { color: #d1d5db; }
@@ -1431,10 +1441,27 @@ function renderQuiz(main) {
       if (isRightAns) mark = '<span class="option-mark"> ✓</span>';
       else if (isUserAns) mark = '<span class="option-mark wrong"> ✗</span>';
     }
-    html += '<div class="' + cls + '" onclick="selectOption(\'' + opt.key + '\',' + (isMulti ? 'true' : 'false') + ')">' +
+    html += '<div class="' + cls + '">' +
       '<div class="option-key">' + opt.key + '</div>' +
       '<div class="option-text">' + escapeHtml(opt.text) + mark + '</div>' +
     '</div>';
+  }
+  html += '</div>';
+  // v6.17: ABCD answer keys bar
+  html += '<div class="answer-keys">';
+  for (let ki = 0; ki < q.options.length; ki++) {
+    const ok = q.options[ki];
+    const isUserAns = userAns.indexOf(ok.key) !== -1;
+    const isRightAns = (q.answer || '').indexOf(ok.key) !== -1;
+    let akCls = 'answer-key-btn';
+    if (locked) {
+      akCls += ' locked';
+      if (isRightAns) akCls += ' correct';
+      else if (isUserAns) akCls += ' wrong';
+    } else if (isUserAns) {
+      akCls += ' selected';
+    }
+    html += '<button class="' + akCls + '" onclick="selectOption(\'' + ok.key + '\',' + (isMulti ? 'true' : 'false') + ')"' + (locked ? ' disabled' : '') + '>' + ok.key + '</button>';
   }
   html += '</div>';
   if (showAnswer && !isExam) { // v6.9: 考试模式不显示答案 box / 答案解析 / 考点来源；只保留选项对错高亮（绿/红）和 ✓/✗ mark
