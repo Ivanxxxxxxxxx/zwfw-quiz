@@ -429,7 +429,7 @@ var QUESTIONS_DATA = {
 
 };
 
-// v7.0: 清洗题库中的导出残留垃圾选项（如 {"key":"E","text":"√"}），答案均为 D，剔除不影响判分
+// v7.0~v9.5: 运行时清洗题库数据瑕疵（不改动原始数据块，加载时修正一次）
 (function normalizeQuestionData() {
   var vols = ['v1','v2','v3','v4'];
   var types = ['danxuan','duoxuan','panduan','budingxiang'];
@@ -441,8 +441,26 @@ var QUESTIONS_DATA = {
       if (!Array.isArray(arr)) continue;
       for (var qi = 0; qi < arr.length; qi++) {
         var q = arr[qi];
-        if (q && Array.isArray(q.options)) {
-          q.options = q.options.filter(function(o){ return !(o && o.text === '√'); });
+        if (!q || !Array.isArray(q.options)) continue;
+        // v7.0: 剔除导出残留垃圾选项（如 {"key":"E","text":"√"}）
+        q.options = q.options.filter(function(o){ return !(o && o.text === '√'); });
+        // v9.5: 清洗答案分隔符（顿号/逗号/空格），"A、B、C" -> "ABC"，防止 isAnswerCorrect 永远判错
+        if (q.answer != null) {
+          q.answer = String(q.answer).replace(/[、，,\s]/g, '');
+        }
+        // v9.5: 多选题答案错位修复——answer 为空但某选项 text 形如纯字母答案串（"BC"/"ABCD"），回填 answer 并移除该多余选项
+        if ((types[ti] === 'duoxuan' || types[ti] === 'budingxiang') && (!q.answer || String(q.answer).trim() === '')) {
+          for (var oi = 0; oi < q.options.length; oi++) {
+            var ot = q.options[oi].text || '';
+            if (/^[A-E]{2,}$/.test(ot)) { q.answer = ot; q.options.splice(oi, 1); break; }
+          }
+        }
+        // v9.5: 判断题缺选项修复——答案为单字符且不在选项中（漏了"错误"选项），补上标准对/错选项
+        if (types[ti] === 'panduan' && q.answer && q.answer.length === 1) {
+          var keys = q.options.map(function(o){ return o.key; });
+          if (keys.indexOf(q.answer) === -1) {
+            q.options.push({ key: q.answer, text: q.answer === 'A' ? '正确' : '错误' });
+          }
         }
       }
     }
