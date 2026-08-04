@@ -67,7 +67,17 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .exam-time-opt { padding: 6px 12px; border: 1px solid #d1d5db; background: #fff; color: #4b5563; border-radius: 8px; font-size: 13px; cursor: pointer; transition: all 0.15s; }
 .exam-time-opt:hover { border-color: #3b82f6; color: #3b82f6; }
 .exam-time-opt.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
-.exam-start-btn { margin-top: 10px; flex: none; }
+.exam-start-btn { margin-top: 14px; width: 100%; flex: none; font-size: 15px; padding: 12px; }
+/* v9.4: 考试设置面板 */
+.mode-info-exam { flex: 1; }
+.exam-intro { font-size: 13px; color: #6b7280; line-height: 1.5; margin-bottom: 10px; }
+.exam-settings { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px; padding: 6px 14px; margin-top: 2px; }
+.exam-setting-row { padding: 11px 0; border-bottom: 1px solid #eef2f7; }
+.exam-setting-row:last-child { border-bottom: none; padding-bottom: 4px; }
+.exam-setting-row:first-child { padding-top: 4px; }
+.exam-setting-label { font-size: 14px; font-weight: 600; color: #374151; }
+.exam-setting-desc { font-size: 12px; color: #9ca3af; line-height: 1.5; margin: 3px 0 8px; }
+.exam-setting-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .exam-custom-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
 .exam-custom-item { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: #4b5563; }
 .exam-custom-item input { width: 56px; padding: 4px 6px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; text-align: center; }
@@ -470,10 +480,10 @@ var state = {
       return v === 'true' || v === true;
     } catch (e) { return true; }
   })(),
-  examBtnStyle: (function() { const v = localStorage.getItem('zwfw_examBtnStyle'); return v === 'card' ? 'card' : 'abcd'; })(),
+  examBtnStyle: (function() { const v = localStorage.getItem('zwfw_examBtnStyle'); return v === 'abcd' ? 'abcd' : 'card'; })(), // v9.4: 默认选项卡样式
   examQCount: 100,        // v9.2: 考试题量，100=固定100题，0=无上限限时挑战
   examUnlimited: false,   // v9.2: 是否无上限限时挑战模式
-  examShuffle: (function() { try { const v = localStorage.getItem('zwfw_examShuffle'); return v === null ? true : (v === 'true'); } catch (e) { return true; } })(), // v9.2: 考试选项乱序，默认开
+  examShuffle: (function() { try { const v = localStorage.getItem('zwfw_examShuffle'); return v === null ? false : (v === 'true'); } catch (e) { return false; } })(), // v9.4: 默认顺序（不打乱选项）
   examMixMode: (function() { try { const v = localStorage.getItem('zwfw_examMixMode'); return v || 'standard'; } catch (e) { return 'standard'; } })(), // v9.3: 题型组合 standard|custom|random
   examCustom: (function() { try { const v = JSON.parse(localStorage.getItem('zwfw_examCustom') || 'null'); if (v && typeof v === 'object') return v; } catch (e) {} return { panduan: 20, danxuan: 60, duoxuan: 20, budingxiang: 0 }; })(), // v9.3: 自定义各题型题数
   examRandomTotal: (function() { try { const v = parseInt(localStorage.getItem('zwfw_examRandomTotal'), 10); if (!isNaN(v) && v > 0) return v; } catch (e) {} return 100; })(), // v9.3: 全随机固定模式总数
@@ -898,44 +908,40 @@ function renderHome(main) {
   '<div class="mode-grid">' +
     '<div class="mode-card mode-card-exam">' +
       '<div class="mode-icon exam">🏆</div>' +
-      '<div class="mode-info">' +
+      '<div class="mode-info mode-info-exam">' +
         '<h3>模拟考试</h3>' +
-        '<p>' + (state.examQCount === 0 ? '⚡ 无上限限时挑战：时间到自动交卷，看你能答多少题（每题 1 分）' : (state.examMixMode === 'standard' ? '标准 100 题（60 单 + 20 多 + 20 判），每题 1 分，60 分及格' : (state.examMixMode === 'random' ? ('随机抽选 ' + examFixedTotal() + ' 题（各题型混合），每题 1 分') : ('自定义组合 ' + examFixedTotal() + ' 题，每题 1 分')))) + '</p>' +
-        '<div class="exam-time-row">' +
-          '<span class="exam-time-label">题型：</span>' +
-          '<button class="exam-time-opt' + (state.examMixMode === 'standard' ? ' active' : '') + '" onclick="selectExamMix(\'standard\', this)">标准组合</button>' +
-          '<button class="exam-time-opt' + (state.examMixMode === 'custom' ? ' active' : '') + '" onclick="selectExamMix(\'custom\', this)">自定义</button>' +
-          '<button class="exam-time-opt' + (state.examMixMode === 'random' ? ' active' : '') + '" onclick="selectExamMix(\'random\', this)">全随机</button>' +
+        '<p class="exam-intro">' + (state.examQCount === 0 ? '⚡ 无上限限时挑战：时间到自动交卷，看你能答多少题（每题 1 分）' : (state.examMixMode === 'standard' ? '标准 100 题（60 单选 + 20 多选 + 20 判断），每题 1 分，60 分及格' : (state.examMixMode === 'random' ? ('随机抽选 ' + examFixedTotal() + ' 题（各题型混合），每题 1 分') : ('自定义组合 ' + examFixedTotal() + ' 题，每题 1 分')))) + '</p>' +
+        '<div class="exam-settings">' +
+          examSettingRow('题型组合', '标准组合：固定 100 题（60 单选 + 20 多选 + 20 判断）；自定义：自己设定各题型数量；全随机：所有题型混合随机抽取',
+            '<button class="exam-time-opt' + (state.examMixMode === 'standard' ? ' active' : '') + '" onclick="selectExamMix(\'standard\', this)">标准组合</button>' +
+            '<button class="exam-time-opt' + (state.examMixMode === 'custom' ? ' active' : '') + '" onclick="selectExamMix(\'custom\', this)">自定义</button>' +
+            '<button class="exam-time-opt' + (state.examMixMode === 'random' ? ' active' : '') + '" onclick="selectExamMix(\'random\', this)">全随机</button>') +
+          (state.examMixMode === 'custom' ? (
+            '<div class="exam-custom-row">' +
+              '<label class="exam-custom-item"><span>判断</span><input type="number" min="0" max="999" value="' + (state.examCustom.panduan||0) + '" onchange="selectExamCustomCount(\'panduan\', this.value)" onclick="event.stopPropagation()"></label>' +
+              '<label class="exam-custom-item"><span>单选</span><input type="number" min="0" max="999" value="' + (state.examCustom.danxuan||0) + '" onchange="selectExamCustomCount(\'danxuan\', this.value)" onclick="event.stopPropagation()"></label>' +
+              '<label class="exam-custom-item"><span>多选</span><input type="number" min="0" max="999" value="' + (state.examCustom.duoxuan||0) + '" onchange="selectExamCustomCount(\'duoxuan\', this.value)" onclick="event.stopPropagation()"></label>' +
+              '<label class="exam-custom-item"><span>不定项</span><input type="number" min="0" max="999" value="' + (state.examCustom.budingxiang||0) + '" onchange="selectExamCustomCount(\'budingxiang\', this.value)" onclick="event.stopPropagation()"></label>' +
+            '</div>'
+          ) : '') +
+          (state.examMixMode === 'random' ? (
+            '<div class="exam-custom-row"><label class="exam-custom-item"><span>随机总数</span><input type="number" min="1" max="999" value="' + state.examRandomTotal + '" onchange="selectExamRandomTotal(this.value)" onclick="event.stopPropagation()"></label><span class="exam-custom-hint">从所有题型混合随机抽取</span></div>'
+          ) : '') +
+          examSettingRow('题量', '固定题量：按所选组合出固定数量的题；无上限挑战：在限时内尽量多答，时间到自动交卷',
+            '<button class="exam-time-opt' + (state.examQCount !== 0 ? ' active' : '') + '" data-qcount="' + examFixedTotal() + '" onclick="selectExamQCount(' + examFixedTotal() + ', this)">固定 ' + examFixedTotal() + ' 题</button>' +
+            '<button class="exam-time-opt' + (state.examQCount === 0 ? ' active' : '') + '" data-qcount="0" onclick="selectExamQCount(0, this)">无上限挑战</button>') +
+          examSettingRow('限时', '考试总时长，时间到自动交卷（无上限挑战必须选择限时）',
+            '<button class="exam-time-opt' + (state.examTimeLimitChoice === 180 ? ' active' : '') + '" data-time="180" onclick="selectExamTime(180, this)">3 分钟</button>' +
+            '<button class="exam-time-opt' + (state.examTimeLimitChoice === 200 ? ' active' : '') + '" data-time="200" onclick="selectExamTime(200, this)">200 秒</button>' +
+            '<button class="exam-time-opt' + (state.examTimeLimitChoice === 300 ? ' active' : '') + '" data-time="300" onclick="selectExamTime(300, this)">5 分钟</button>' +
+            '<button class="exam-time-opt' + (state.examTimeLimitChoice === 0 ? ' active' : '') + '" data-time="0" onclick="selectExamTime(0, this)"' + (state.examQCount === 0 ? ' disabled style="opacity:.4;cursor:not-allowed"' : '') + '>不限时</button>') +
+          examSettingRow('跳题方式', '自动：答完本题自动进入下一题；手动：需点"下一题"才进入',
+            '<button class="exam-time-opt' + (state.examAutoNext ? ' active' : '') + '" data-auto="true" onclick="selectExamAutoNext(true, this)">自动跳题</button><button class="exam-time-opt' + (state.examAutoNext ? '' : ' active') + '" data-auto="false" onclick="selectExamAutoNext(false, this)">手动下一题</button>') +
+          examSettingRow('答题按钮', '选项卡：直接点击选项卡片作答；ABCD键：点击圆形字母按钮作答',
+            '<button class="exam-time-opt' + (state.examBtnStyle === 'abcd' ? ' active' : '') + '" onclick="event.stopPropagation();selectExamBtnStyle(\'abcd\',this)">ABCD键</button><button class="exam-time-opt' + (state.examBtnStyle === 'card' ? ' active' : '') + '" onclick="event.stopPropagation();selectExamBtnStyle(\'card\',this)">选项卡</button>') +
+          examSettingRow('选项顺序', '乱序：打乱选项位置，防止死记"A 就是答案"；顺序：保持题目原始选项顺序',
+            '<button class="exam-time-opt' + (state.examShuffle ? ' active' : '') + '" data-shuffle="true" onclick="selectExamShuffle(true, this)">乱序</button><button class="exam-time-opt' + (state.examShuffle ? '' : ' active') + '" data-shuffle="false" onclick="selectExamShuffle(false, this)">顺序</button>') +
         '</div>' +
-        (state.examMixMode === 'custom' ? (
-          '<div class="exam-custom-row">' +
-            '<label class="exam-custom-item"><span>判断</span><input type="number" min="0" max="999" value="' + (state.examCustom.panduan||0) + '" onchange="selectExamCustomCount(\'panduan\', this.value)" onclick="event.stopPropagation()"></label>' +
-            '<label class="exam-custom-item"><span>单选</span><input type="number" min="0" max="999" value="' + (state.examCustom.danxuan||0) + '" onchange="selectExamCustomCount(\'danxuan\', this.value)" onclick="event.stopPropagation()"></label>' +
-            '<label class="exam-custom-item"><span>多选</span><input type="number" min="0" max="999" value="' + (state.examCustom.duoxuan||0) + '" onchange="selectExamCustomCount(\'duoxuan\', this.value)" onclick="event.stopPropagation()"></label>' +
-            '<label class="exam-custom-item"><span>不定项</span><input type="number" min="0" max="999" value="' + (state.examCustom.budingxiang||0) + '" onchange="selectExamCustomCount(\'budingxiang\', this.value)" onclick="event.stopPropagation()"></label>' +
-          '</div>'
-        ) : '') +
-        (state.examMixMode === 'random' ? (
-          '<div class="exam-custom-row"><label class="exam-custom-item"><span>随机总数</span><input type="number" min="1" max="999" value="' + state.examRandomTotal + '" onchange="selectExamRandomTotal(this.value)" onclick="event.stopPropagation()"></label><span class="exam-custom-hint">从所有题型混合随机抽取</span></div>'
-        ) : '') +
-        '<div class="exam-time-row">' +
-          '<span class="exam-time-label">题量：</span>' +
-          '<button class="exam-time-opt' + (state.examQCount !== 0 ? ' active' : '') + '" data-qcount="' + examFixedTotal() + '" onclick="selectExamQCount(' + examFixedTotal() + ', this)">固定 ' + examFixedTotal() + ' 题</button>' +
-          '<button class="exam-time-opt' + (state.examQCount === 0 ? ' active' : '') + '" data-qcount="0" onclick="selectExamQCount(0, this)">无上限挑战</button>' +
-        '</div>' +
-        '<div class="exam-time-row">' +
-          '<span class="exam-time-label">限时：</span>' +
-          '<button class="exam-time-opt' + (state.examTimeLimitChoice === 180 ? ' active' : '') + '" data-time="180" onclick="selectExamTime(180, this)">3 分钟</button>' +
-          '<button class="exam-time-opt' + (state.examTimeLimitChoice === 200 ? ' active' : '') + '" data-time="200" onclick="selectExamTime(200, this)">200 秒</button>' +
-          '<button class="exam-time-opt' + (state.examTimeLimitChoice === 300 ? ' active' : '') + '" data-time="300" onclick="selectExamTime(300, this)">5 分钟</button>' +
-          '<button class="exam-time-opt' + (state.examTimeLimitChoice === 0 ? ' active' : '') + '" data-time="0" onclick="selectExamTime(0, this)"' + (state.examQCount === 0 ? ' disabled style="opacity:.4;cursor:not-allowed"' : '') + '>不限时</button>' +
-        '</div>' +
-        '<div class="exam-time-row">' +
-          '<span class="exam-time-label">跳题：</span>' +
-          '<button class="exam-time-opt' + (state.examAutoNext ? ' active' : '') + '" data-auto="true" onclick="selectExamAutoNext(true, this)">自动</button><button class="exam-time-opt' + (state.examAutoNext ? '' : ' active') + '" data-auto="false" onclick="selectExamAutoNext(false, this)">手动</button>' +
-        '</div>' +
-        '<div class="exam-time-row"><span class="exam-time-label">按钮：</span><button class="exam-time-opt' + (state.examBtnStyle === 'abcd' ? ' active' : '') + '" onclick="event.stopPropagation();selectExamBtnStyle(\'abcd\',this)">ABCD键</button><button class="exam-time-opt' + (state.examBtnStyle === 'card' ? ' active' : '') + '" onclick="event.stopPropagation();selectExamBtnStyle(\'card\',this)">选项卡</button></div>' +
-        '<div class="exam-time-row"><span class="exam-time-label">选项：</span><button class="exam-time-opt' + (state.examShuffle ? ' active' : '') + '" data-shuffle="true" onclick="selectExamShuffle(true, this)">乱序开</button><button class="exam-time-opt' + (state.examShuffle ? '' : ' active') + '" data-shuffle="false" onclick="selectExamShuffle(false, this)">顺序</button></div>' +
         '<button class="btn btn-primary exam-start-btn" onclick="startExam(getSelectedExamTime())">开始考试</button>' +
       '</div>' +
     '</div>' +
@@ -1430,6 +1436,14 @@ function examFixedTotal() {
   }
   return state.examRandomTotal || 100;
 }
+// v9.4: 考试设置面板的一行（标签 + 功能说明 + 控件）
+function examSettingRow(label, desc, controls) {
+  return '<div class="exam-setting-row">' +
+    '<div class="exam-setting-label">' + label + '</div>' +
+    (desc ? '<div class="exam-setting-desc">' + desc + '</div>' : '') +
+    '<div class="exam-setting-controls">' + controls + '</div>' +
+  '</div>';
+}
 function selectExamMix(mode, el) {
   state.examMixMode = mode;
   try { localStorage.setItem('zwfw_examMixMode', mode); } catch (e) {}
@@ -1812,6 +1826,7 @@ function renderQuiz(main) {
   const isMulti = q.type === 'duoxuan' || q.type === 'budingxiang';
   const userAns = state.answers[q.id] || [];
   const isExam = state.quizMode === 'exam';
+  const btnStyle = isExam ? state.examBtnStyle : 'card'; // v9.4: 刷题/错题集/快答一律选项卡样式
   const isWrongset = state.quizMode === 'wrongset';
   const isRush = state.quizMode === 'budingxiang_rush';  // v6.14: 补 v6.13 漏掉的声明（renderQuiz 顶部）
   const examThisLocked = isExam && state.examLocked[q.id];
@@ -1875,14 +1890,14 @@ function renderQuiz(main) {
       if (isRightAns) mark = '<span class="option-mark"> ✓</span>';
       else if (isUserAns) mark = '<span class="option-mark wrong"> ✗</span>';
     }
-    html += '<div class="' + cls + '"' + (state.examBtnStyle === 'card' && !locked ? ' onclick="selectOption(\'' + opt.key + '\',' + (isMulti ? 'true' : 'false') + ')" style="cursor:pointer"' : '') + '>' +
+    html += '<div class="' + cls + '"' + (btnStyle === 'card' && !locked ? ' onclick="selectOption(\'' + opt.key + '\',' + (isMulti ? 'true' : 'false') + ')" style="cursor:pointer"' : '') + '>' +
       '<div class="option-key">' + opt.key + '</div>' +
       '<div class="option-text">' + escapeHtml(opt.text) + mark + '</div>' +
     '</div>';
   }
   html += '</div>';
     // v7.0: ABCD buttons only shown in 'abcd' style
-  if (state.examBtnStyle === 'abcd') {
+  if (btnStyle === 'abcd') {
 // v6.17: ABCD answer keys bar
   html += '<div class="answer-keys">';
   for (let ki = 0; ki < q.options.length; ki++) {
