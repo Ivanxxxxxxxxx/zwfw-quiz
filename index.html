@@ -68,6 +68,11 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .exam-time-opt:hover { border-color: #3b82f6; color: #3b82f6; }
 .exam-time-opt.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
 .exam-start-btn { margin-top: 10px; flex: none; }
+.exam-custom-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.exam-custom-item { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: #4b5563; }
+.exam-custom-item input { width: 56px; padding: 4px 6px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; text-align: center; }
+.exam-custom-item input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,.15); }
+.exam-custom-hint { font-size: 12px; color: #9ca3af; margin-top: 4px; }
 .mode-card-exam { cursor: default; align-items: flex-start; }
 .mode-card-exam:hover { transform: none; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
 .section-title { font-size: 16px; font-weight: 600; margin: 24px 0 12px; color: #374151; display: flex; align-items: center; gap: 6px; }
@@ -469,6 +474,9 @@ var state = {
   examQCount: 100,        // v9.2: 考试题量，100=固定100题，0=无上限限时挑战
   examUnlimited: false,   // v9.2: 是否无上限限时挑战模式
   examShuffle: (function() { try { const v = localStorage.getItem('zwfw_examShuffle'); return v === null ? true : (v === 'true'); } catch (e) { return true; } })(), // v9.2: 考试选项乱序，默认开
+  examMixMode: (function() { try { const v = localStorage.getItem('zwfw_examMixMode'); return v || 'standard'; } catch (e) { return 'standard'; } })(), // v9.3: 题型组合 standard|custom|random
+  examCustom: (function() { try { const v = JSON.parse(localStorage.getItem('zwfw_examCustom') || 'null'); if (v && typeof v === 'object') return v; } catch (e) {} return { panduan: 20, danxuan: 60, duoxuan: 20, budingxiang: 0 }; })(), // v9.3: 自定义各题型题数
+  examRandomTotal: (function() { try { const v = parseInt(localStorage.getItem('zwfw_examRandomTotal'), 10); if (!isNaN(v) && v > 0) return v; } catch (e) {} return 100; })(), // v9.3: 全随机固定模式总数
   bxRushTimerEnabled: (function() { // v6.11: 快答模式 5 秒倒计时是否开启；默认 true；从 LS 读取用户上次选择
     try {
       const v = localStorage.getItem('zwfw_bxRushTimer');
@@ -613,7 +621,8 @@ function saveExamRecord(result) {
     unanswered: result.unanswered,
     score: result.score,
     time: result.time,
-    unlimited: !!result.unlimited
+    unlimited: !!result.unlimited,
+    passLine: typeof result.passLine === 'number' ? result.passLine : 60
   });
   if (records.length > 50) records.length = 50; // 最多保留 50 条
   saveExamHistory(records);
@@ -891,10 +900,27 @@ function renderHome(main) {
       '<div class="mode-icon exam">🏆</div>' +
       '<div class="mode-info">' +
         '<h3>模拟考试</h3>' +
-        '<p>' + (state.examQCount === 0 ? '⚡ 无上限限时挑战：时间到自动交卷，看你能答多少题（每题 1 分）' : '标准 100 题（60 单 + 20 多 + 20 判），每题 1 分，60 分及格；也可选「无上限」限时挑战') + '</p>' +
+        '<p>' + (state.examQCount === 0 ? '⚡ 无上限限时挑战：时间到自动交卷，看你能答多少题（每题 1 分）' : (state.examMixMode === 'standard' ? '标准 100 题（60 单 + 20 多 + 20 判），每题 1 分，60 分及格' : (state.examMixMode === 'random' ? ('随机抽选 ' + examFixedTotal() + ' 题（各题型混合），每题 1 分') : ('自定义组合 ' + examFixedTotal() + ' 题，每题 1 分')))) + '</p>' +
+        '<div class="exam-time-row">' +
+          '<span class="exam-time-label">题型：</span>' +
+          '<button class="exam-time-opt' + (state.examMixMode === 'standard' ? ' active' : '') + '" onclick="selectExamMix(\'standard\', this)">标准组合</button>' +
+          '<button class="exam-time-opt' + (state.examMixMode === 'custom' ? ' active' : '') + '" onclick="selectExamMix(\'custom\', this)">自定义</button>' +
+          '<button class="exam-time-opt' + (state.examMixMode === 'random' ? ' active' : '') + '" onclick="selectExamMix(\'random\', this)">全随机</button>' +
+        '</div>' +
+        (state.examMixMode === 'custom' ? (
+          '<div class="exam-custom-row">' +
+            '<label class="exam-custom-item"><span>判断</span><input type="number" min="0" max="999" value="' + (state.examCustom.panduan||0) + '" onchange="selectExamCustomCount(\'panduan\', this.value)" onclick="event.stopPropagation()"></label>' +
+            '<label class="exam-custom-item"><span>单选</span><input type="number" min="0" max="999" value="' + (state.examCustom.danxuan||0) + '" onchange="selectExamCustomCount(\'danxuan\', this.value)" onclick="event.stopPropagation()"></label>' +
+            '<label class="exam-custom-item"><span>多选</span><input type="number" min="0" max="999" value="' + (state.examCustom.duoxuan||0) + '" onchange="selectExamCustomCount(\'duoxuan\', this.value)" onclick="event.stopPropagation()"></label>' +
+            '<label class="exam-custom-item"><span>不定项</span><input type="number" min="0" max="999" value="' + (state.examCustom.budingxiang||0) + '" onchange="selectExamCustomCount(\'budingxiang\', this.value)" onclick="event.stopPropagation()"></label>' +
+          '</div>'
+        ) : '') +
+        (state.examMixMode === 'random' ? (
+          '<div class="exam-custom-row"><label class="exam-custom-item"><span>随机总数</span><input type="number" min="1" max="999" value="' + state.examRandomTotal + '" onchange="selectExamRandomTotal(this.value)" onclick="event.stopPropagation()"></label><span class="exam-custom-hint">从所有题型混合随机抽取</span></div>'
+        ) : '') +
         '<div class="exam-time-row">' +
           '<span class="exam-time-label">题量：</span>' +
-          '<button class="exam-time-opt' + (state.examQCount === 100 ? ' active' : '') + '" data-qcount="100" onclick="selectExamQCount(100, this)">固定 100 题</button>' +
+          '<button class="exam-time-opt' + (state.examQCount !== 0 ? ' active' : '') + '" data-qcount="' + examFixedTotal() + '" onclick="selectExamQCount(' + examFixedTotal() + ', this)">固定 ' + examFixedTotal() + ' 题</button>' +
           '<button class="exam-time-opt' + (state.examQCount === 0 ? ' active' : '') + '" data-qcount="0" onclick="selectExamQCount(0, this)">无上限挑战</button>' +
         '</div>' +
         '<div class="exam-time-row">' +
@@ -1393,6 +1419,45 @@ function selectExamShuffle(on, el) {
   for (let i = 0; i < btns.length; i++) btns[i].classList.remove('active');
   el.classList.add('active');
 }
+// v9.3: 考试模式「题型组合」选择与自定义题数
+const EXAM_TYPES = ['panduan', 'danxuan', 'duoxuan', 'budingxiang'];
+const TYPE_LABEL = { panduan: '判断', danxuan: '单选', duoxuan: '多选', budingxiang: '不定项' };
+function examFixedTotal() {
+  if (state.examMixMode === 'standard') return 100;
+  if (state.examMixMode === 'custom') {
+    let s = 0; for (const t of EXAM_TYPES) s += (state.examCustom[t] || 0);
+    return s > 0 ? s : 100;
+  }
+  return state.examRandomTotal || 100;
+}
+function selectExamMix(mode, el) {
+  state.examMixMode = mode;
+  try { localStorage.setItem('zwfw_examMixMode', mode); } catch (e) {}
+  if (state.examQCount !== 0) state.examQCount = examFixedTotal(); // 固定模式随组合更新题量
+  const parent = el.parentNode;
+  const btns = parent.querySelectorAll('.exam-time-opt');
+  for (let i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+  el.classList.add('active');
+  render();
+}
+function selectExamCustomCount(type, val) {
+  let n = parseInt(val, 10);
+  if (isNaN(n) || n < 0) n = 0;
+  if (n > 999) n = 999;
+  state.examCustom[type] = n;
+  try { localStorage.setItem('zwfw_examCustom', JSON.stringify(state.examCustom)); } catch (e) {}
+  if (state.examQCount !== 0) state.examQCount = examFixedTotal();
+  render(); // 更新"固定 X 题"按钮数字
+}
+function selectExamRandomTotal(val) {
+  let n = parseInt(val, 10);
+  if (isNaN(n) || n < 1) n = 100;
+  if (n > 999) n = 999;
+  state.examRandomTotal = n;
+  try { localStorage.setItem('zwfw_examRandomTotal', String(n)); } catch (e) {}
+  if (state.examQCount !== 0) state.examQCount = n;
+  render();
+}
 // v9.2: 打乱单题选项顺序并同步重映射答案（key 仍为 A/B/C/D…）
 function shuffleQuestionOptions(q) {
   if (!q || !Array.isArray(q.options) || q.options.length < 2) return q;
@@ -1413,35 +1478,64 @@ function shuffleQuestionOptions(q) {
   for (let k = 0; k < oldAns.length; k++) newAns += (keyMap[oldAns[k]] || oldAns[k]);
   return Object.assign({}, q, { options: newOpts, answer: newAns });
 }
-// v9.2: 构建考试试卷（含题量/乱序逻辑），不足返回 null（已提示）
+// v9.3: 构建考试试卷（支持 标准/自定义/全随机 组合 + 固定/无上限 + 乱序），不足返回 null（已提示）
+function allTypePool() {
+  return [].concat(getQ('panduan') || [], getQ('danxuan') || [], getQ('duoxuan') || [], getQ('budingxiang') || []);
+}
+// 无上限模式从中无限抽的候选池（自定义模式仅含所选题型）
+function examTypeCandidatePool() {
+  if (state.examMixMode === 'custom') {
+    let pool = [];
+    for (const t of EXAM_TYPES) if ((state.examCustom[t] || 0) > 0) pool = pool.concat(getQ(t) || []);
+    return pool;
+  }
+  return allTypePool(); // standard / random 均从所有题型
+}
+// 固定模式：返回 {type:count} 或 {_random: N}
+function examTargetCounts() {
+  if (state.examMixMode === 'random') return { _random: state.examQCount };
+  if (state.examMixMode === 'custom') {
+    const t = {}; let sum = 0;
+    for (const tp of EXAM_TYPES) { const n = state.examCustom[tp] || 0; t[tp] = n; sum += n; }
+    if (sum === 0) return { _random: state.examQCount }; // 自定义全 0 → 视为从所有题随机
+    return t;
+  }
+  return { panduan: 20, danxuan: 60, duoxuan: 20, budingxiang: 0 };
+}
 function buildExamQuestions() {
   let pool;
   if (state.examQCount === 0) {
-    pool = [].concat(getQ('panduan') || [], getQ('danxuan') || [], getQ('duoxuan') || [], getQ('budingxiang') || []);
+    pool = examTypeCandidatePool();
     if (pool.length === 0) { alert('当前卷没有任何题目，无法开始考试'); return null; }
     pool = shuffle(pool.slice());
     state.examUnlimited = true;
   } else {
-    const STRUCT = { panduan: 20, danxuan: 60, duoxuan: 20, budingxiang: 0 };
-    for (const t in STRUCT) {
-      if (STRUCT[t] === 0) continue;
-      const have = (getQ(t) || []).length;
-      if (have < STRUCT[t]) { alert('题库不足：' + t + ' 需要 ' + STRUCT[t] + ' 题，目前只有 ' + have + ' 题，无法开始考试'); return null; }
+    const target = examTargetCounts();
+    if (target._random) {
+      pool = allTypePool();
+      if (pool.length < target._random) { alert('题库不足：共 ' + pool.length + ' 题，无法满足 ' + target._random + ' 题'); return null; }
+      pool = shuffle(pool.slice()).slice(0, target._random);
+      state.examUnlimited = false;
+    } else {
+      for (const t in target) {
+        if (target[t] === 0) continue;
+        const have = (getQ(t) || []).length;
+        if (have < target[t]) { alert('题库不足：' + TYPE_LABEL[t] + ' 需要 ' + target[t] + ' 题，目前只有 ' + have + ' 题'); return null; }
+      }
+      pool = [];
+      for (const t in target) {
+        const need = target[t]; if (need === 0) continue;
+        pool = pool.concat(pickRandom(getQ(t) || [], need));
+      }
+      state.examUnlimited = false;
     }
-    pool = [];
-    for (const t in STRUCT) {
-      const need = STRUCT[t];
-      if (need === 0) continue;
-      pool = pool.concat(pickRandom(getQ(t) || [], need));
-    }
-    state.examUnlimited = false;
   }
   if (state.examShuffle) pool = pool.map(shuffleQuestionOptions);
   return pool;
 }
-// v9.2: 无上限模式用尽当前池后追加一轮新题，保证一直能答
+// v9.2: 无上限模式用尽当前池后追加一轮新题，保证一直能答（v9.3: 从候选池抽，遵循自定义题型）
 function extendExamPool() {
-  let more = [].concat(getQ('panduan') || [], getQ('danxuan') || [], getQ('duoxuan') || [], getQ('budingxiang') || []);
+  let more = examTypeCandidatePool();
   more = shuffle(more.slice());
   if (state.examShuffle) more = more.map(shuffleQuestionOptions);
   state.questions = state.questions.concat(more);
@@ -1459,6 +1553,7 @@ function startExam(timeLimit) {
   // v9.2: 统一通过 buildExamQuestions 组卷（含题量/乱序）
   const examQs = buildExamQuestions();
   if (!examQs) return; // 题库不足已提示
+  const examTotal = examQs.length;
   // v5.3: 根据 timeLimit 动态拼 confirm 弹窗
   let timeRule = '';
   if (timeLimit > 0) {
@@ -1469,10 +1564,19 @@ function startExam(timeLimit) {
   } else {
     timeRule = '\n• ⏱ 不限时，自己掌控节奏，答完手动交卷';
   }
-  const countRule = state.examUnlimited
-    ? '\n• ⚡ 无上限限时挑战：从当前卷所有题型随机抽题，时间到自动交卷'
-    : '\n• 共 100 道题：60 道单项题 + 20 道多选 + 20 道判断';
-  const passRule = state.examUnlimited ? '' : '\n• 每题 1 分，满分 100 分，60 分及格';
+  let countRule;
+  if (state.examUnlimited) {
+    countRule = '\n• ⚡ 无上限限时挑战：从所选题型随机抽题，时间到自动交卷';
+  } else if (state.examMixMode === 'standard') {
+    countRule = '\n• 共 100 道题：60 道单项题 + 20 道多选 + 20 道判断';
+  } else if (state.examMixMode === 'random') {
+    countRule = '\n• 共 ' + examTotal + ' 道题：从所有题型随机抽选';
+  } else {
+    const c = state.examCustom;
+    countRule = '\n• 共 ' + examTotal + ' 道题：自定义组合（判断 ' + (c.panduan||0) + ' + 单选 ' + (c.danxuan||0) + ' + 多选 ' + (c.duoxuan||0) + ' + 不定项 ' + (c.budingxiang||0) + '）';
+  }
+  const passLine = state.examUnlimited ? 0 : Math.round(examTotal * 0.6);
+  const passRule = state.examUnlimited ? '' : ('\n• 每题 1 分，满分 ' + examTotal + ' 分，' + passLine + ' 分及格');
   const endRule = state.examUnlimited ? '' : '\n• 答完所有题后自动交卷';
   if (!confirm('考试规则：' + countRule + passRule +
     '\n• 单项题/判断：选完立即显示对错并锁定，不可更改' +
@@ -2262,7 +2366,8 @@ function submitExam() {
     score: correctCount,
     time: Date.now() - state.startTime,
     details: result,
-    unlimited: isUnlimited
+    unlimited: isUnlimited,
+    passLine: isUnlimited ? 0 : Math.round(presented * 0.6)
   };
   saveExamRecord(state.examResult);
   navigate('exam-result');
@@ -2283,11 +2388,12 @@ function renderExamResult(main) {
       '</div>' +
     '</div>';
   } else {
-    const passed = r.score >= 60;
+    const passed = r.score >= (r.passLine || 60);
+    const maxScore = r.total;
     html = '<div class="result-card">' +
       '<div class="result-score ' + (passed ? 'pass' : 'fail') + '">' + r.score + '</div>' +
       '<div class="result-status ' + (passed ? 'pass' : 'fail') + '">' + (passed ? '🎉 恭喜通过' : '💪 继续努力') + '</div>' +
-      '<div class="result-tip">满分 100 分，60 分及格。本次共 ' + r.total + ' 题，每题 1 分</div>' +
+      '<div class="result-tip">满分 ' + maxScore + ' 分，' + (r.passLine || 60) + ' 分及格。本次共 ' + r.total + ' 题，每题 1 分</div>' +
       '<div class="result-stats">' +
         '<div class="result-stat correct"><div class="num">' + r.correct + '</div><div class="lbl">答对</div></div>' +
         '<div class="result-stat wrong"><div class="num">' + r.wrong + '</div><div class="lbl">答错</div></div>' +
@@ -2427,7 +2533,7 @@ function renderExamHistory(main) {
       const d = new Date(r.date);
       const ds = d.getFullYear() + '-' + ('0'+(d.getMonth()+1)).slice(-2) + '-' + ('0'+d.getDate()).slice(-2) + ' ' + ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2);
       const isUnlimited = !!r.unlimited;
-      const passed = isUnlimited ? null : (r.score >= 60);
+      const passed = isUnlimited ? null : (r.score >= (r.passLine || 60));
       const scoreCls = isUnlimited ? '' : (passed ? 'pass' : 'fail');
       const resultCls = isUnlimited ? '' : (passed ? 'pass' : 'fail');
       html += '<div class="history-item">' +
