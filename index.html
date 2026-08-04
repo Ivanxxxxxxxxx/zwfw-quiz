@@ -1619,7 +1619,7 @@ function startExam(timeLimit) {
   const passLine = state.examUnlimited ? 0 : Math.round(examTotal * 0.6);
   const passRule = state.examUnlimited ? '' : ('\n• 每题 1 分，满分 ' + examTotal + ' 分，' + passLine + ' 分及格');
   const endRule = state.examUnlimited ? '' : '\n• 答完所有题后自动交卷';
-  if (!confirm('考试规则：' + countRule + passRule +
+  const examRules = '考试规则：' + countRule + passRule +
     '\n• 单项题/判断：选完立即显示对错并锁定，不可更改' +
     '\n• 多选/不定项：选完点"确认答案"后锁定' +
     '\n• 答错的题自动加入"错题集"' +
@@ -1628,25 +1628,29 @@ function startExam(timeLimit) {
     '\n• 按钮样式：' + (state.examBtnStyle === 'abcd' ? 'ABCD圆形按钮' : '点击选项卡片') +
     '\n• 选项顺序：' + (state.examShuffle ? '已打乱（正确答案随机分布）' : '原始顺序') +
     endRule + timeRule +
-    '\n\n点击"确定"开始考试')) return;
-  state.questions = examQs;
-  state.currentIdx = 0;
-  state.answers = {};
-  state.submitted = false;
-  state.submittedSet = {};
-  state.examLocked = {};
-  state.practiceType = null;
-  state.quizMode = 'exam';
-  state.startTime = Date.now();
-  state.examTimeLimit = timeLimit;
-  // v5.3: timeLimit=0 表示不限时，deadline=0 不启动 timer
-  if (timeLimit > 0) {
-    state.examDeadline = state.startTime + state.examTimeLimit * 1000;
-    startExamTimer();
-  } else {
-    state.examDeadline = 0;
-  }
-  navigate('quiz');
+    '\n\n点击"确定"开始考试';
+  // v9.7fix: 改用页面内 showConfirm 替代 window.confirm
+  // （iframe 预览环境下 window.confirm 被屏蔽会返回 false，导致考试无法进入）
+  showConfirm(examRules, function() {
+    state.questions = examQs;
+    state.currentIdx = 0;
+    state.answers = {};
+    state.submitted = false;
+    state.submittedSet = {};
+    state.examLocked = {};
+    state.practiceType = null;
+    state.quizMode = 'exam';
+    state.startTime = Date.now();
+    state.examTimeLimit = timeLimit;
+    // v5.3: timeLimit=0 表示不限时，deadline=0 不启动 timer
+    if (timeLimit > 0) {
+      state.examDeadline = state.startTime + state.examTimeLimit * 1000;
+      startExamTimer();
+    } else {
+      state.examDeadline = 0;
+    }
+    navigate('quiz');
+  });
 }
 
 // ========== v4.9: 考试倒计时（3 分钟总限时）==========
