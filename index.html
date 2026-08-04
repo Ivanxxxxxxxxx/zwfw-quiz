@@ -90,6 +90,16 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .exam-custom-hint { font-size: 12px; color: #9ca3af; margin-top: 4px; }
 .mode-card-exam { cursor: default; align-items: flex-start; }
 .mode-card-exam:hover { transform: none; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+/* v9.6: 页面内确认弹窗（替代 window.confirm，避免 iframe 预览中弹窗被屏蔽导致"点了没反应"） */
+.confirm-overlay { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(15,23,42,.45); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 16px; }
+.confirm-card { background: #fff; border-radius: 14px; padding: 22px 20px; max-width: 340px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+.confirm-msg { font-size: 14px; line-height: 1.6; color: #374151; white-space: pre-line; margin-bottom: 18px; }
+.confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.confirm-actions .btn { min-height: 40px; padding: 0 18px; }
+@media (prefers-color-scheme: dark) {
+  .confirm-card { background: #1f2937; }
+  .confirm-msg { color: #e5e7eb; }
+}
 .section-title { font-size: 16px; font-weight: 600; margin: 24px 0 12px; color: #374151; display: flex; align-items: center; gap: 6px; }
 .section-title::before { content: ''; width: 3px; height: 14px; background: #3b82f6; border-radius: 2px; }
 .category-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -942,17 +952,13 @@ function renderHome(main) {
       '<div class="mode-icon rush">⚡</div>' +
       '<div class="mode-info">' +
         '<h3>不定项快答</h3>' +
-        '<p>' + (state.bxRushTimerEnabled ? '每轮 10 题，每题 5 秒，答得越快分越高' : '每轮 10 题，无倒计时，答对 1 分') + '</p>' +
-        '<div class="exam-time-row" onclick="event.stopPropagation();">' +
-          '<span class="exam-time-label">倒计时：</span>' +
-          '<button class="exam-time-opt' + (state.bxRushTimerEnabled ? ' active' : '') + '" data-bxrt="true" onclick="event.stopPropagation(); selectBxRushTimer(true, this);">开</button><button class="exam-time-opt' + (state.bxRushTimerEnabled ? '' : ' active') + '" data-bxrt="false" onclick="event.stopPropagation(); selectBxRushTimer(false, this);">关</button>' +
-        '</div>' +
+        '<p>' + (state.bxRushTimerEnabled ? '每轮 10 题，每题 5 秒，答得越快分越高（倒计时可在「功能开关」中关闭）' : '每轮 10 题，无倒计时，答对 1 分（倒计时可在「功能开关」中开启）') + '</p>' +
       '</div>' +
     '</div>' +
   '</div>' +
     '<div class="section-title">功能开关</div>' +
     '<div class="settings-card">' +
-      '<div class="settings-card-title">功能开关 <span class="settings-card-sub">仅作用于模拟考试</span></div>' +
+      '<div class="settings-card-title">功能开关 <span class="settings-card-sub">模拟考试 · 不定项快答</span></div>' +
       '<div class="settings-grid">' +
         examSettingRow('题型组合', '标准组合：固定 100 题（60 单选 + 20 多选 + 20 判断）；自定义：自己设定各题型数量；全随机：所有题型混合随机抽取',
           '<button class="exam-time-opt' + (state.examMixMode === 'standard' ? ' active' : '') + '" onclick="selectExamMix(\'standard\', this)">标准组合</button>' +
@@ -982,6 +988,8 @@ function renderHome(main) {
           '<button class="exam-time-opt' + (state.examBtnStyle === 'abcd' ? ' active' : '') + '" onclick="event.stopPropagation();selectExamBtnStyle(\'abcd\',this)">ABCD键</button><button class="exam-time-opt' + (state.examBtnStyle === 'card' ? ' active' : '') + '" onclick="event.stopPropagation();selectExamBtnStyle(\'card\',this)">选项卡</button>') +
         examSettingRow('选项顺序', '乱序：打乱选项位置，防止死记"A 就是答案"；顺序：保持题目原始选项顺序',
           '<button class="exam-time-opt' + (state.examShuffle ? ' active' : '') + '" data-shuffle="true" onclick="selectExamShuffle(true, this)">乱序</button><button class="exam-time-opt' + (state.examShuffle ? '' : ' active') + '" data-shuffle="false" onclick="selectExamShuffle(false, this)">顺序</button>') +
+        examSettingRow('快答倒计时', '开启后每题 5 秒倒计时，时间到自动判错；关闭则不限时，答对 1 分',
+          '<button class="exam-time-opt' + (state.bxRushTimerEnabled ? ' active' : '') + '" onclick="selectBxRushTimer(true, this)">开</button><button class="exam-time-opt' + (state.bxRushTimerEnabled ? '' : ' active') + '" onclick="selectBxRushTimer(false, this)">关</button>') +
       '</div>' +
     '</div>' +
     '<div class="section-title">题库统计</div>' +
@@ -1416,19 +1424,10 @@ function selectExamBtnStyle(style, el) {
 }
 
 function selectBxRushTimer(enabled, el) {
+  // v9.6: 开关移入「功能开关」卡片后，不再手动改 DOM，直接重渲染即可同步 mode card 描述与卡片高亮
   state.bxRushTimerEnabled = !!enabled;
   try { localStorage.setItem('zwfw_bxRushTimer', JSON.stringify(!!enabled)); } catch (e) {}
-  const parent = el.parentNode;
-  const btns = parent.querySelectorAll('.exam-time-opt');
-  for (let i = 0; i < btns.length; i++) {
-    btns[i].classList.remove('active');
-  }
-  el.classList.add('active');
-  // 同步更新 mode card 上的描述文字
-  const desc = parent.parentNode.querySelector('p');
-  if (desc) {
-    desc.textContent = enabled ? '每轮 10 题，每题 5 秒，答得越快分越高' : '每轮 10 题，无倒计时，答对 1 分';
-  }
+  render();
 }
 // v9.2: 考试模式「题量」选择（100=固定，0=无上限限时挑战）
 function selectExamQCount(n, el) {
@@ -2171,16 +2170,46 @@ function nextQuestion() {
     }
   }
 }
+// v9.6: 页面内确认弹窗（替代 window.confirm，避免 iframe 预览中弹窗被屏蔽导致"点了没反应"）
+function showConfirm(message, onYes) {
+  var old = document.getElementById('confirmOverlay');
+  if (old && old.parentNode) old.parentNode.removeChild(old);
+  var overlay = document.createElement('div');
+  overlay.id = 'confirmOverlay';
+  overlay.className = 'confirm-overlay';
+  var card = document.createElement('div');
+  card.className = 'confirm-card';
+  var msg = document.createElement('div');
+  msg.className = 'confirm-msg';
+  msg.textContent = message;
+  var actions = document.createElement('div');
+  actions.className = 'confirm-actions';
+  var btnNo = document.createElement('button');
+  btnNo.className = 'btn btn-secondary';
+  btnNo.textContent = '取消';
+  btnNo.onclick = function() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); };
+  var btnYes = document.createElement('button');
+  btnYes.className = 'btn btn-danger';
+  btnYes.textContent = '确定';
+  btnYes.onclick = function() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); if (onYes) onYes(); };
+  actions.appendChild(btnNo);
+  actions.appendChild(btnYes);
+  card.appendChild(msg);
+  card.appendChild(actions);
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+}
 function resetPracticeProgress() {
-  // v9.1: 练习模式手动重置当前题型进度
+  // v9.1: 练习模式手动重置当前题型进度；v9.6: 改用页面内确认弹窗
   if (state.quizMode !== 'practice' || !state.practiceType) return;
-  if (!confirm('确定重置当前练习进度吗？将从第 1 题重新开始（本题型已作答记录会清空）。')) return;
-  clearPracticeProgress(state.practiceType);
-  state.currentIdx = 0;
-  state.answers = {};
-  state.submittedSet = {};
-  state.submitted = false;
-  render();
+  showConfirm('确定重置当前练习进度吗？\n将从第 1 题重新开始，本题型已作答记录会清空。', function() {
+    clearPracticeProgress(state.practiceType);
+    state.currentIdx = 0;
+    state.answers = {};
+    state.submittedSet = {};
+    state.submitted = false;
+    render();
+  });
 }
 
 function showPracticeComplete() {
