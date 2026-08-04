@@ -67,6 +67,12 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .exam-time-opt { padding: 6px 12px; border: 1px solid #d1d5db; background: #fff; color: #4b5563; border-radius: 8px; font-size: 13px; cursor: pointer; transition: all 0.15s; }
 .exam-time-opt:hover { border-color: #3b82f6; color: #3b82f6; }
 .exam-time-opt.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+.exam-time-custom { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid #d1d5db; background: #fff; color: #4b5563; border-radius: 8px; font-size: 13px; }
+.exam-time-custom.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+.exam-time-input { width: 58px; padding: 4px 6px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; text-align: center; }
+.exam-time-custom.active .exam-time-input { color: #fff; background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.6); }
+.exam-time-apply { padding: 4px 10px; border: none; background: #3b82f6; color: #fff; border-radius: 6px; font-size: 13px; cursor: pointer; }
+.exam-time-custom.active .exam-time-apply { background: #fff; color: #3b82f6; }
 .exam-start-btn { margin-top: 14px; width: 100%; flex: none; font-size: 15px; padding: 12px; }
 /* v9.4: 考试设置面板；v9.6: 将开关抽离为独立「功能开关」卡片 */
 .mode-info-exam { flex: 1; }
@@ -503,7 +509,8 @@ var state = {
   browsePageSize: 10,
   wrongSetFilter: 'all',  // 'all' | 'danxuan' | 'duoxuan' | 'panduan' | 'budingxiang'
   examTimeLimit: 180,     // v4.9: 考试总限时秒数（3 分钟）
-  examTimeLimitChoice: 180,  // v5.3: 用户在 mode card 选中的限时（秒），0 表示不限时
+  examTimeLimitChoice: (function(){ try { const v = parseInt(localStorage.getItem('zwfw_examTimeLimitChoice'), 10); if (!isNaN(v) && v >= 0) return v; } catch (e) {} return 180; })(),  // 用户选中限时（秒），0=不限时；自定义时长=分钟*60
+  examCustomMin: (function(){ try { const v = parseInt(localStorage.getItem('zwfw_examCustomMin'), 10); if (!isNaN(v) && v >= 1 && v <= 180) return v; } catch (e) {} return 10; })(),  // v9.9: 自定义限时分钟数（1~180）
   examDeadline: 0,        // v4.9: 考试截止时间戳（ms）
   examTimer: null,        // v4.9: 考试倒计时 setInterval 句柄
   examAutoNext: (function() { // v6.8: 考试模式答题后是否自动跳下一题；默认 true；从 LS 读取用户上次选择
@@ -707,7 +714,12 @@ function getVolumeStats(vol) {
 function setVolume(vol) {
   if (vol !== 'v1' && vol !== 'v2' && vol !== 'v3' && vol !== 'v4') return;
   if ((state.quizMode === 'exam' || state.quizMode === 'practice' || state.quizMode === 'wrongset' || state.quizMode === 'budingxiang_rush') && state.questions && state.questions.length > 0) {
-    if (!confirm('切换卷将退出当前练习/考试，确定吗？')) return;
+    // v9.9: 改用页面内 showConfirm（iframe 预览下原生 confirm 被屏蔽，会导致切不了卷）
+    showConfirm('切换卷将退出当前练习/考试，确定吗？', function() {
+      state.currentVolume = vol;
+      goHome();
+    });
+    return;
   }
   state.currentVolume = vol;
   goHome();
@@ -981,7 +993,8 @@ function renderHome(main) {
           '<button class="exam-time-opt' + (state.examTimeLimitChoice === 180 ? ' active' : '') + '" data-time="180" onclick="selectExamTime(180, this)">3 分钟</button>' +
           '<button class="exam-time-opt' + (state.examTimeLimitChoice === 200 ? ' active' : '') + '" data-time="200" onclick="selectExamTime(200, this)">200 秒</button>' +
           '<button class="exam-time-opt' + (state.examTimeLimitChoice === 300 ? ' active' : '') + '" data-time="300" onclick="selectExamTime(300, this)">5 分钟</button>' +
-          '<button class="exam-time-opt' + (state.examTimeLimitChoice === 0 ? ' active' : '') + '" data-time="0" onclick="selectExamTime(0, this)"' + (state.examQCount === 0 ? ' disabled style="opacity:.4;cursor:not-allowed"' : '') + '>不限时</button>') +
+          '<button class="exam-time-opt' + (state.examTimeLimitChoice === 0 ? ' active' : '') + '" data-time="0" onclick="selectExamTime(0, this)"' + (state.examQCount === 0 ? ' disabled style="opacity:.4;cursor:not-allowed"' : '') + '>不限时</button>',
+          '<span class="exam-time-custom' + (isCustomTime() ? ' active' : '') + '">自定义 <input id="examCustomMin" type="number" min="1" max="180" step="1" value="' + state.examCustomMin + '" class="exam-time-input" /> 分钟 <button class="exam-time-apply" onclick="applyCustomTime()">应用</button></span>') +
         examSettingRow('跳题方式', '自动：答完本题自动进入下一题；手动：需点"下一题"才进入',
           '<button class="exam-time-opt' + (state.examAutoNext ? ' active' : '') + '" data-auto="true" onclick="selectExamAutoNext(true, this)">自动跳题</button><button class="exam-time-opt' + (state.examAutoNext ? '' : ' active') + '" data-auto="false" onclick="selectExamAutoNext(false, this)">手动下一题</button>') +
         examSettingRow('答题按钮', '选项卡：直接点击选项卡片作答；ABCD键：点击圆形字母按钮作答',
@@ -1389,14 +1402,27 @@ function startPracticeAt(type, startNum) {
   navigate('quiz');
 }
 function selectExamTime(time, el) {
-  // v5.3: 用户在 mode card 选时段
+  // v5.3: 用户在 mode card 选时段；v9.9: 持久化 + 交由 render 统一处理高亮
   state.examTimeLimitChoice = time;
-  const parent = el.parentNode;
-  const btns = parent.querySelectorAll('.exam-time-opt');
-  for (let i = 0; i < btns.length; i++) {
-    btns[i].classList.remove('active');
-  }
-  el.classList.add('active');
+  try { localStorage.setItem('zwfw_examTimeLimitChoice', String(time)); } catch (e) {}
+  render();
+}
+// v9.9: 自定义限时（分钟 → 秒）
+function applyCustomTime() {
+  const inp = document.getElementById('examCustomMin');
+  let min = parseInt(inp ? inp.value : '', 10);
+  if (isNaN(min) || min < 1) min = 1;
+  if (min > 180) min = 180;
+  state.examCustomMin = min;
+  state.examTimeLimitChoice = min * 60;
+  try {
+    localStorage.setItem('zwfw_examCustomMin', String(min));
+    localStorage.setItem('zwfw_examTimeLimitChoice', String(min * 60));
+  } catch (e) {}
+  render();
+}
+function isCustomTime() {
+  return state.examTimeLimitChoice !== 180 && state.examTimeLimitChoice !== 200 && state.examTimeLimitChoice !== 300 && state.examTimeLimitChoice !== 0;
 }
 // v6.8: 考试模式"自动/手动跳题"开关
 function selectExamAutoNext(auto, el) {
