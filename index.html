@@ -666,7 +666,7 @@ function renderHome(main) {
   // v6.12: 卷3 也显示"不定项专练"按钮（点击时由 startPractice 拦截提示"卷3 暂无不定项题"）
   html += '<div class="mode-card" onclick="startPractice(\'budingxiang\')">' +
     '<div class="mode-icon practice">🔘</div>' +
-    '<div class="mode-info"><h3>不定项专练</h3><p>' + (stats.budingxiang > 0 ? (stats.budingxiang + ' 道不定项，顺序练习') : '卷3 暂无不定项题') + '</p></div>' +
+    '<div class="mode-info"><h3>不定项专练</h3><p>' + (stats.budingxiang > 0 ? (stats.budingxiang + ' 道不定项，顺序练习') : '当前卷暂无不定项题') + '</p></div>' +
   '</div>';
   html += '</div>' +
   '<div class="section-title">模拟考试</div>' +
@@ -685,7 +685,7 @@ function renderHome(main) {
         '<div class="exam-time-row">' +
           '<span class="exam-time-label">跳题：</span>' +
           '<button class="exam-time-opt' + (state.examAutoNext ? ' active' : '') + '" data-auto="true" onclick="selectExamAutoNext(true, this)">自动</button><button class="exam-time-opt' + (state.examAutoNext ? '' : ' active') + '" data-auto="false" onclick="selectExamAutoNext(false, this)">手动</button>' +
-        '</div>' + +
+        '</div>' +
         '<div class="exam-time-row"><span class="exam-time-label">按钮：</span><button class="exam-time-opt' + (state.examBtnStyle === 'abcd' ? ' active' : '') + '" onclick="event.stopPropagation();selectExamBtnStyle(\'abcd\',this)">ABCD键</button><button class="exam-time-opt' + (state.examBtnStyle === 'card' ? ' active' : '') + '" onclick="event.stopPropagation();selectExamBtnStyle(\'card\',this)">选项卡</button></div>'
         '<button class="btn btn-primary exam-start-btn" onclick="startExam(getSelectedExamTime())">开始考试</button>' +
       '</div>' +
@@ -715,7 +715,7 @@ function renderHome(main) {
 function startBrowse(type) {
   // v6.12: 卷3 点"题库统计-不定项选择题"分类时给友好提示（不进 browse 空状态页）
   if (type === 'budingxiang' && getQ('budingxiang').length === 0) {
-    alert('卷3 暂无不定项题\n请使用「📋 分类浏览」（全部）或「📖 顺序刷题」浏览全部题目');
+    alert('当前卷暂无不定项题\n请使用「📋 分类浏览」（全部）或「📖 顺序刷题」浏览全部题目');
     return;
   }
   state.browseType = type || null;
@@ -885,7 +885,7 @@ function startPractice(type) {
   if (questions.length === 0) {
     // v6.12: 卷3 点"不定项专练"按钮时给更明确的引导
     if (type === 'budingxiang') {
-      alert('卷3 暂无不定项题\n请使用「📖 顺序刷题」或「⚡ 不定项快答」练习全部题目');
+      alert('当前卷暂无不定项题\n请使用「📖 顺序刷题」或「⚡ 不定项快答」练习全部题目');
     } else {
       alert('该分类暂无题目');
     }
@@ -1243,7 +1243,7 @@ function startBudingxiangRush() {
     return;
   }
   const ruleMsg = isFallback
-    ? '快答规则（卷3 无不定项，从所有题型抽题）：\n• 共 10 道随机题（单选/多选/判断混合）\n• 每题 5 秒倒计时，时间到自动判错\n• 答对得 1 分 + 剩余秒数 × 2 奖励分\n• 答错 0 分，自动加入错题集\n\n点击"确定"开始'
+    ? '快答规则（当前卷无不定项，从所有题型抽题）：\n• 共 10 道随机题（单选/多选/判断混合）\n• 每题 5 秒倒计时，时间到自动判错\n• 答对得 1 分 + 剩余秒数 × 2 奖励分\n• 答错 0 分，自动加入错题集\n\n点击"确定"开始'
     : '快答规则：\n• 共 10 道不定项选择题\n• 每题 5 秒倒计时，时间到自动判错\n• 答对得 1 分 + 剩余秒数 × 2 奖励分\n• 答错 0 分，自动加入错题集\n\n点击"确定"开始';
   if (!confirm(ruleMsg)) return;
   state.questions = pickRandom(pool, 10);
