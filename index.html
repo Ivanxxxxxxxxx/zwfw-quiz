@@ -1763,6 +1763,10 @@ function renderQuiz(main) {
   } else {
     // 刷题 / 错题集模式
     html += '<button class="btn btn-secondary" onclick="prevQuestion()"' + (state.currentIdx === 0 ? ' disabled' : '') + '>‹ 上一题</button>';
+    if (state.quizMode === 'practice') {
+      // v9.1: 练习模式手动重置当前题型进度
+      html += '<button class="btn btn-danger" onclick="resetPracticeProgress()" title="重置当前题型练习进度（从第 1 题重新开始）">🔄 重置进度</button>';
+    }
     if (!state.submitted) {
       html += '<button class="btn btn-primary" onclick="submitAnswer()"' + (userAns.length === 0 ? ' disabled' : '') + '>提交答案</button>';
     } else {
@@ -1930,6 +1934,18 @@ function nextQuestion() {
     }
   }
 }
+function resetPracticeProgress() {
+  // v9.1: 练习模式手动重置当前题型进度
+  if (state.quizMode !== 'practice' || !state.practiceType) return;
+  if (!confirm('确定重置当前练习进度吗？将从第 1 题重新开始（本题型已作答记录会清空）。')) return;
+  clearPracticeProgress(state.practiceType);
+  state.currentIdx = 0;
+  state.answers = {};
+  state.submittedSet = {};
+  state.submitted = false;
+  render();
+}
+
 function showPracticeComplete() {
   const total = state.questions.length;
   const wrongList = [];
