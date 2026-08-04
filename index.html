@@ -451,7 +451,7 @@ function getVolumeStats(vol) {
   };
 }
 function setVolume(vol) {
-  if (vol !== 'v1' && vol !== 'v2' && vol !== 'v3') return;
+  if (vol !== 'v1' && vol !== 'v2' && vol !== 'v3' && vol !== 'v4') return;
   if ((state.quizMode === 'exam' || state.quizMode === 'practice' || state.quizMode === 'wrongset' || state.quizMode === 'budingxiang_rush') && state.questions && state.questions.length > 0) {
     if (!confirm('切换卷将退出当前练习/考试，确定吗？')) return;
   }
@@ -587,7 +587,7 @@ function renderHome(main) {
   const v1Total = v1s.danxuan + v1s.duoxuan + v1s.panduan + v1s.budingxiang;
   const v2Total = v2s.danxuan + v2s.duoxuan + v2s.panduan + v2s.budingxiang;
   const v3Total = v3s.danxuan + v3s.duoxuan + v3s.panduan + v3s.budingxiang;
-  const v4s = QUESTIONS_DATA.v4;
+  const v4s = getVolumeStats('v4');
   const v4Total = v4s.danxuan + v4s.duoxuan + v4s.panduan + v4s.budingxiang;
   const curVol = state.currentVolume || 'v1';
   const total = stats.danxuan + stats.duoxuan + stats.panduan + stats.budingxiang;
