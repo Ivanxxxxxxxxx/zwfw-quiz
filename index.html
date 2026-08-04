@@ -466,6 +466,9 @@ var state = {
     } catch (e) { return true; }
   })(),
   examBtnStyle: (function() { const v = localStorage.getItem('zwfw_examBtnStyle'); return v === 'card' ? 'card' : 'abcd'; })(),
+  examQCount: 100,        // v9.2: 考试题量，100=固定100题，0=无上限限时挑战
+  examUnlimited: false,   // v9.2: 是否无上限限时挑战模式
+  examShuffle: (function() { try { const v = localStorage.getItem('zwfw_examShuffle'); return v === null ? true : (v === 'true'); } catch (e) { return true; } })(), // v9.2: 考试选项乱序，默认开
   bxRushTimerEnabled: (function() { // v6.11: 快答模式 5 秒倒计时是否开启；默认 true；从 LS 读取用户上次选择
     try {
       const v = localStorage.getItem('zwfw_bxRushTimer');
@@ -609,7 +612,8 @@ function saveExamRecord(result) {
     wrong: result.wrong,
     unanswered: result.unanswered,
     score: result.score,
-    time: result.time
+    time: result.time,
+    unlimited: !!result.unlimited
   });
   if (records.length > 50) records.length = 50; // 最多保留 50 条
   saveExamHistory(records);
@@ -887,18 +891,25 @@ function renderHome(main) {
       '<div class="mode-icon exam">🏆</div>' +
       '<div class="mode-info">' +
         '<h3>模拟考试</h3>' +
-        '<p>60 单项题 + 20 多选 + 20 判断 共 100 题，每题 1 分，60 分及格</p>' +
+        '<p>' + (state.examQCount === 0 ? '⚡ 无上限限时挑战：时间到自动交卷，看你能答多少题（每题 1 分）' : '标准 100 题（60 单 + 20 多 + 20 判），每题 1 分，60 分及格；也可选「无上限」限时挑战') + '</p>' +
+        '<div class="exam-time-row">' +
+          '<span class="exam-time-label">题量：</span>' +
+          '<button class="exam-time-opt' + (state.examQCount === 100 ? ' active' : '') + '" data-qcount="100" onclick="selectExamQCount(100, this)">固定 100 题</button>' +
+          '<button class="exam-time-opt' + (state.examQCount === 0 ? ' active' : '') + '" data-qcount="0" onclick="selectExamQCount(0, this)">无上限挑战</button>' +
+        '</div>' +
         '<div class="exam-time-row">' +
           '<span class="exam-time-label">限时：</span>' +
-          '<button class="exam-time-opt active" data-time="180" onclick="selectExamTime(180, this)">3 分钟</button><button class="exam-time-opt" data-time="200" onclick="selectExamTime(200, this)">200 秒</button>' +
-          '<button class="exam-time-opt" data-time="300" onclick="selectExamTime(300, this)">5 分钟</button>' +
-          '<button class="exam-time-opt" data-time="0" onclick="selectExamTime(0, this)">不限时</button>' +
+          '<button class="exam-time-opt' + (state.examTimeLimitChoice === 180 ? ' active' : '') + '" data-time="180" onclick="selectExamTime(180, this)">3 分钟</button>' +
+          '<button class="exam-time-opt' + (state.examTimeLimitChoice === 200 ? ' active' : '') + '" data-time="200" onclick="selectExamTime(200, this)">200 秒</button>' +
+          '<button class="exam-time-opt' + (state.examTimeLimitChoice === 300 ? ' active' : '') + '" data-time="300" onclick="selectExamTime(300, this)">5 分钟</button>' +
+          '<button class="exam-time-opt' + (state.examTimeLimitChoice === 0 ? ' active' : '') + '" data-time="0" onclick="selectExamTime(0, this)"' + (state.examQCount === 0 ? ' disabled style="opacity:.4;cursor:not-allowed"' : '') + '>不限时</button>' +
         '</div>' +
         '<div class="exam-time-row">' +
           '<span class="exam-time-label">跳题：</span>' +
           '<button class="exam-time-opt' + (state.examAutoNext ? ' active' : '') + '" data-auto="true" onclick="selectExamAutoNext(true, this)">自动</button><button class="exam-time-opt' + (state.examAutoNext ? '' : ' active') + '" data-auto="false" onclick="selectExamAutoNext(false, this)">手动</button>' +
         '</div>' +
         '<div class="exam-time-row"><span class="exam-time-label">按钮：</span><button class="exam-time-opt' + (state.examBtnStyle === 'abcd' ? ' active' : '') + '" onclick="event.stopPropagation();selectExamBtnStyle(\'abcd\',this)">ABCD键</button><button class="exam-time-opt' + (state.examBtnStyle === 'card' ? ' active' : '') + '" onclick="event.stopPropagation();selectExamBtnStyle(\'card\',this)">选项卡</button></div>' +
+        '<div class="exam-time-row"><span class="exam-time-label">选项：</span><button class="exam-time-opt' + (state.examShuffle ? ' active' : '') + '" data-shuffle="true" onclick="selectExamShuffle(true, this)">乱序开</button><button class="exam-time-opt' + (state.examShuffle ? '' : ' active') + '" data-shuffle="false" onclick="selectExamShuffle(false, this)">顺序</button></div>' +
         '<button class="btn btn-primary exam-start-btn" onclick="startExam(getSelectedExamTime())">开始考试</button>' +
       '</div>' +
     '</div>' +
@@ -1360,6 +1371,81 @@ function selectBxRushTimer(enabled, el) {
     desc.textContent = enabled ? '每轮 10 题，每题 5 秒，答得越快分越高' : '每轮 10 题，无倒计时，答对 1 分';
   }
 }
+// v9.2: 考试模式「题量」选择（100=固定，0=无上限限时挑战）
+function selectExamQCount(n, el) {
+  state.examQCount = n;
+  const parent = el.parentNode;
+  const btns = parent.querySelectorAll('.exam-time-opt');
+  for (let i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+  el.classList.add('active');
+  // 无上限模式必须有时间限制：若当前选了“不限时”，自动切回 3 分钟
+  if (n === 0 && state.examTimeLimitChoice === 0) {
+    state.examTimeLimitChoice = 180;
+  }
+  render(); // 重渲染以同步描述文案与“不限时”按钮禁用态
+}
+// v9.2: 考试模式「选项乱序」开关（默认开）
+function selectExamShuffle(on, el) {
+  state.examShuffle = !!on;
+  try { localStorage.setItem('zwfw_examShuffle', JSON.stringify(!!on)); } catch (e) {}
+  const parent = el.parentNode;
+  const btns = parent.querySelectorAll('.exam-time-opt');
+  for (let i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+  el.classList.add('active');
+}
+// v9.2: 打乱单题选项顺序并同步重映射答案（key 仍为 A/B/C/D…）
+function shuffleQuestionOptions(q) {
+  if (!q || !Array.isArray(q.options) || q.options.length < 2) return q;
+  const opts = q.options.slice();
+  for (let i = opts.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = opts[i]; opts[i] = opts[j]; opts[j] = t;
+  }
+  const newKeys = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+  const keyMap = {};
+  const newOpts = opts.map(function(o, idx) {
+    const nk = newKeys[idx];
+    keyMap[o.key] = nk;
+    return { key: nk, text: o.text };
+  });
+  const oldAns = ansToStr(q.answer);
+  let newAns = '';
+  for (let k = 0; k < oldAns.length; k++) newAns += (keyMap[oldAns[k]] || oldAns[k]);
+  return Object.assign({}, q, { options: newOpts, answer: newAns });
+}
+// v9.2: 构建考试试卷（含题量/乱序逻辑），不足返回 null（已提示）
+function buildExamQuestions() {
+  let pool;
+  if (state.examQCount === 0) {
+    pool = [].concat(getQ('panduan') || [], getQ('danxuan') || [], getQ('duoxuan') || [], getQ('budingxiang') || []);
+    if (pool.length === 0) { alert('当前卷没有任何题目，无法开始考试'); return null; }
+    pool = shuffle(pool.slice());
+    state.examUnlimited = true;
+  } else {
+    const STRUCT = { panduan: 20, danxuan: 60, duoxuan: 20, budingxiang: 0 };
+    for (const t in STRUCT) {
+      if (STRUCT[t] === 0) continue;
+      const have = (getQ(t) || []).length;
+      if (have < STRUCT[t]) { alert('题库不足：' + t + ' 需要 ' + STRUCT[t] + ' 题，目前只有 ' + have + ' 题，无法开始考试'); return null; }
+    }
+    pool = [];
+    for (const t in STRUCT) {
+      const need = STRUCT[t];
+      if (need === 0) continue;
+      pool = pool.concat(pickRandom(getQ(t) || [], need));
+    }
+    state.examUnlimited = false;
+  }
+  if (state.examShuffle) pool = pool.map(shuffleQuestionOptions);
+  return pool;
+}
+// v9.2: 无上限模式用尽当前池后追加一轮新题，保证一直能答
+function extendExamPool() {
+  let more = [].concat(getQ('panduan') || [], getQ('danxuan') || [], getQ('duoxuan') || [], getQ('budingxiang') || []);
+  more = shuffle(more.slice());
+  if (state.examShuffle) more = more.map(shuffleQuestionOptions);
+  state.questions = state.questions.concat(more);
+}
 // v5.4: 修复"不限时"按钮不生效 bug——内联表达式 `|| 180` 在 0 时错误回退
 function getSelectedExamTime() {
   if (typeof state.examTimeLimitChoice === 'number') return state.examTimeLimitChoice;
@@ -1368,22 +1454,14 @@ function getSelectedExamTime() {
 function startExam(timeLimit) {
   // v5.3: timeLimit 可选，0 = 不限时；默认 180
   if (typeof timeLimit === 'undefined' || timeLimit === null) timeLimit = 180;
-  // 考试结构：60 单项题 + 20 多选 + 20 判断 = 100 题
-  // v6.7: 考试模式改为固定顺序——先判断题，再单选题，最后多选题
-  const EXAM_STRUCT = { panduan: 20, danxuan: 60, duoxuan: 20, budingxiang: 0 };
-  // 各题型题数检查
-  for (const t in EXAM_STRUCT) {
-    if (EXAM_STRUCT[t] === 0) continue;
-    const have = (getQ(t) || []).length;
-    if (have < EXAM_STRUCT[t]) {
-      alert('题库不足：' + t + ' 需要 ' + EXAM_STRUCT[t] + ' 题，目前只有 ' + have + ' 题，无法开始考试');
-      return;
-    }
-  }
+  // 无上限模式必须有时间限制（否则无限答下去）
+  if (state.examQCount === 0 && timeLimit === 0) timeLimit = 180;
+  // v9.2: 统一通过 buildExamQuestions 组卷（含题量/乱序）
+  const examQs = buildExamQuestions();
+  if (!examQs) return; // 题库不足已提示
   // v5.3: 根据 timeLimit 动态拼 confirm 弹窗
   let timeRule = '';
   if (timeLimit > 0) {
-    // v6.5: timeLimit 可能是非整分钟数（200 秒），需要动态算 X 分 Y 秒
     const m = Math.floor(timeLimit / 60);
     const s = timeLimit % 60;
     const human = s === 0 ? (m + ' 分钟') : (m + ' 分 ' + s + ' 秒');
@@ -1391,16 +1469,21 @@ function startExam(timeLimit) {
   } else {
     timeRule = '\n• ⏱ 不限时，自己掌控节奏，答完手动交卷';
   }
-  if (!confirm('考试规则：\n• 共 100 道题：60 道单项题 + 20 道多选 + 20 道判断\n• 每题 1 分，满分 100 分\n• 60 分及格\n• 单项题/判断：选完立即显示对错并锁定，不可更改\n• 多选/不定项：选完点"确认答案"后锁定\n• 答错的题自动加入"错题集"\n• 答题过程中可随时点"交卷"即时评分\n• 跳题模式：' + (state.examAutoNext ? '答题后自动跳下一题' : '答题后需手动点【下一题】') + '\n• 按钮样式：' + (state.examBtnStyle === 'abcd' ? 'ABCD圆形按钮' : '点击选项卡片') + '\n• 答完所有题后自动交卷' + timeRule + '\n\n点击"确定"开始考试')) return;
-  // v6.7: 按题型分别随机抽，拼接后即为试卷顺序（判断→单选→多选）
-  let examQs = [];
-  for (const t in EXAM_STRUCT) {
-    const need = EXAM_STRUCT[t];
-    if (need === 0) continue;
-    const pool = getQ(t) || [];
-    examQs = examQs.concat(pickRandom(pool, need));
-  }
-  // v6.7: 取消整体洗牌，保留题型内部随机抽题，按 EXAM_STRUCT 顺序拼接
+  const countRule = state.examUnlimited
+    ? '\n• ⚡ 无上限限时挑战：从当前卷所有题型随机抽题，时间到自动交卷'
+    : '\n• 共 100 道题：60 道单项题 + 20 道多选 + 20 道判断';
+  const passRule = state.examUnlimited ? '' : '\n• 每题 1 分，满分 100 分，60 分及格';
+  const endRule = state.examUnlimited ? '' : '\n• 答完所有题后自动交卷';
+  if (!confirm('考试规则：' + countRule + passRule +
+    '\n• 单项题/判断：选完立即显示对错并锁定，不可更改' +
+    '\n• 多选/不定项：选完点"确认答案"后锁定' +
+    '\n• 答错的题自动加入"错题集"' +
+    '\n• 答题过程中可随时点"交卷"即时评分' +
+    '\n• 跳题模式：' + (state.examAutoNext ? '答题后自动跳下一题' : '答题后需手动点【下一题】') +
+    '\n• 按钮样式：' + (state.examBtnStyle === 'abcd' ? 'ABCD圆形按钮' : '点击选项卡片') +
+    '\n• 选项顺序：' + (state.examShuffle ? '已打乱（正确答案随机分布）' : '原始顺序') +
+    endRule + timeRule +
+    '\n\n点击"确定"开始考试')) return;
   state.questions = examQs;
   state.currentIdx = 0;
   state.answers = {};
@@ -1630,7 +1713,7 @@ function renderQuiz(main) {
   const examThisLocked = isExam && state.examLocked[q.id];
   const showAnswer = (!isExam && state.submitted) || examThisLocked;
   const locked = showAnswer;  // 锁住：刷题已提交 或 考试本题已锁
-  const progress = (state.currentIdx + 1) + ' / ' + state.questions.length;
+  const progress = (isExam && state.examUnlimited) ? ((state.currentIdx + 1) + ' 题') : ((state.currentIdx + 1) + ' / ' + state.questions.length);
   let answeredCount;
   if (isExam) {
     answeredCount = Object.keys(state.examLocked).filter(function(k) { return state.examLocked[k]; }).length;
@@ -1639,7 +1722,7 @@ function renderQuiz(main) {
   }
   // v6.10: 区分快答题源（'budingxiang' / 'all'）
   const bxSrc = state.quizMode === 'budingxiang_rush' ? (state.bxRushSource === 'all' ? 'all' : 'budingxiang') : '';
-  const modeLabel = isExam ? '考试模式' : (isWrongset ? '错题集练习' : (state.quizMode === 'budingxiang_rush' ? (bxSrc === 'all' ? '快答（所有题）' : '不定项快答') : '刷题模式'));
+  const modeLabel = isExam ? (state.examUnlimited ? '限时挑战' : '考试模式') : (isWrongset ? '错题集练习' : (state.quizMode === 'budingxiang_rush' ? (bxSrc === 'all' ? '快答（所有题）' : '不定项快答') : '刷题模式'));
   const modeCls = isExam ? 'exam' : (isWrongset ? 'wrongset' : (state.quizMode === 'budingxiang_rush' ? 'rush' : ''));
   let bxTimerBar = '';
   // v6.11: 倒计时关闭时不渲染 timer bar
@@ -1745,7 +1828,7 @@ function renderQuiz(main) {
     if (!examThisLocked && isMulti) {
       html += '<button class="btn btn-primary" onclick="confirmMultiAnswer()"' + (userAns.length === 0 ? ' disabled' : '') + '>确认答案</button>';
     } else {
-      const last = state.currentIdx >= state.questions.length - 1;
+      const last = (!state.examUnlimited) && state.currentIdx >= state.questions.length - 1;
       let label, disabled = false;
       if (last) {
         if (examThisLocked) {
@@ -1927,6 +2010,13 @@ function nextQuestion() {
     savePracticeProgress(state.practiceType);
     render();
   } else {
+    if (state.quizMode === 'exam' && state.examUnlimited) {
+      // v9.2: 无上限模式用尽当前池后追加新题，不交卷继续答
+      extendExamPool();
+      state.currentIdx++;
+      render();
+      return;
+    }
     if (state.quizMode === 'exam') {
       submitExam();
     } else {
@@ -2139,53 +2229,72 @@ function trySubmitExam() {
 }
 function submitExam() {
   stopExamTimer();
+  const isUnlimited = state.examUnlimited;
+  const presented = isUnlimited ? (state.currentIdx + 1) : state.questions.length;
   const answered = Object.keys(state.answers).filter(function(k) { return (state.answers[k] || []).length > 0; }).length;
-  const unanswered = state.questions.length - answered;
-  let confirmMsg = '确定要交卷吗？\n共 ' + state.questions.length + ' 题，已答 ' + answered + ' 题';
+  const unanswered = presented - answered;
+  let confirmMsg = '确定要交卷吗？\n本次共呈现 ' + presented + ' 题，已答 ' + answered + ' 题';
   if (unanswered > 0) {
     confirmMsg += '\n还有 ' + unanswered + ' 题未作答，将计 0 分';
   }
   if (!confirm(confirmMsg)) return;
-  // 把所有答错的题加入错题集
-  for (let i = 0; i < state.questions.length; i++) {
-    const q = state.questions[i];
+  // 仅统计已呈现的题目（无上限模式池远大于实际作答数）
+  const served = isUnlimited ? state.questions.slice(0, presented) : state.questions;
+  for (let i = 0; i < served.length; i++) {
+    const q = served[i];
     const userAns = state.answers[q.id] || [];
     if (userAns.length === 0 || !isAnswerCorrect(q, userAns)) {
       addToWrongSet(q.id);
     }
   }
   let correctCount = 0;
-  const result = state.questions.map(function(q) {
+  const result = served.map(function(q) {
     const userAns = state.answers[q.id] || [];
     const ok = isAnswerCorrect(q, userAns);
     if (ok) correctCount++;
     return { q: q, userAns: userAns, ok: ok };
   });
   state.examResult = {
-    total: state.questions.length,
+    total: presented,
     correct: correctCount,
-    wrong: state.questions.length - correctCount,
+    wrong: presented - correctCount,
     unanswered: unanswered,
     score: correctCount,
     time: Date.now() - state.startTime,
-    details: result
+    details: result,
+    unlimited: isUnlimited
   };
   saveExamRecord(state.examResult);
   navigate('exam-result');
 }
 function renderExamResult(main) {
   const r = state.examResult;
-  const passed = r.score >= 60;
-  let html = '<div class="result-card">' +
-    '<div class="result-score ' + (passed ? 'pass' : 'fail') + '">' + r.score + '</div>' +
-    '<div class="result-status ' + (passed ? 'pass' : 'fail') + '">' + (passed ? '🎉 恭喜通过' : '💪 继续努力') + '</div>' +
-    '<div class="result-tip">满分 100 分，60 分及格。本次共 ' + r.total + ' 题，每题 1 分</div>' +
-    '<div class="result-stats">' +
-      '<div class="result-stat correct"><div class="num">' + r.correct + '</div><div class="lbl">答对</div></div>' +
-      '<div class="result-stat wrong"><div class="num">' + r.wrong + '</div><div class="lbl">答错</div></div>' +
-      '<div class="result-stat total"><div class="num">' + formatTime(r.time) + '</div><div class="lbl">用时</div></div>' +
-    '</div>' +
-  '</div>' +
+  const acc = r.total > 0 ? Math.round(r.correct / r.total * 100) : 0;
+  let html;
+  if (r.unlimited) {
+    html = '<div class="result-card">' +
+      '<div class="result-score">' + r.score + '</div>' +
+      '<div class="result-status">⚡ 限时挑战 · 共答 ' + r.total + ' 题</div>' +
+      '<div class="result-tip">每题 1 分，限时 ' + state.examTimeLimit + ' 秒。答对 ' + r.correct + ' 题，正确率 ' + acc + '%</div>' +
+      '<div class="result-stats">' +
+        '<div class="result-stat correct"><div class="num">' + r.correct + '</div><div class="lbl">答对</div></div>' +
+        '<div class="result-stat wrong"><div class="num">' + r.wrong + '</div><div class="lbl">答错/未答</div></div>' +
+        '<div class="result-stat total"><div class="num">' + acc + '%</div><div class="lbl">正确率</div></div>' +
+      '</div>' +
+    '</div>';
+  } else {
+    const passed = r.score >= 60;
+    html = '<div class="result-card">' +
+      '<div class="result-score ' + (passed ? 'pass' : 'fail') + '">' + r.score + '</div>' +
+      '<div class="result-status ' + (passed ? 'pass' : 'fail') + '">' + (passed ? '🎉 恭喜通过' : '💪 继续努力') + '</div>' +
+      '<div class="result-tip">满分 100 分，60 分及格。本次共 ' + r.total + ' 题，每题 1 分</div>' +
+      '<div class="result-stats">' +
+        '<div class="result-stat correct"><div class="num">' + r.correct + '</div><div class="lbl">答对</div></div>' +
+        '<div class="result-stat wrong"><div class="num">' + r.wrong + '</div><div class="lbl">答错</div></div>' +
+        '<div class="result-stat total"><div class="num">' + formatTime(r.time) + '</div><div class="lbl">用时</div></div>' +
+      '</div>' +
+    '</div>';
+  }
   '<div class="result-actions">' +
     '<button class="btn btn-primary" onclick="startExam()">再来一次</button>' +
     '<button class="btn btn-secondary" onclick="goHome()">返回首页</button>' +
@@ -2317,12 +2426,15 @@ function renderExamHistory(main) {
       const r = recs[i];
       const d = new Date(r.date);
       const ds = d.getFullYear() + '-' + ('0'+(d.getMonth()+1)).slice(-2) + '-' + ('0'+d.getDate()).slice(-2) + ' ' + ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2);
-      const passed = r.score >= 60;
+      const isUnlimited = !!r.unlimited;
+      const passed = isUnlimited ? null : (r.score >= 60);
+      const scoreCls = isUnlimited ? '' : (passed ? 'pass' : 'fail');
+      const resultCls = isUnlimited ? '' : (passed ? 'pass' : 'fail');
       html += '<div class="history-item">' +
-        '<div class="hi-score ' + (passed ? 'pass' : 'fail') + '">' + r.score + '</div>' +
+        '<div class="hi-score ' + scoreCls + '">' + r.score + '</div>' +
         '<div class="hi-main">' +
           '<div class="hi-line1"><span class="hi-vol">' + (volName[r.vol] || r.vol) + '</span>' +
-            '<span class="hi-result ' + (passed ? 'pass' : 'fail') + '">' + (passed ? '通过' : '未通过') + '</span>' +
+            '<span class="hi-result ' + resultCls + '">' + (isUnlimited ? '挑战' : (passed ? '通过' : '未通过')) + '</span>' +
             '<span class="hi-correct">答对 ' + r.correct + '/' + r.total + '</span></div>' +
           '<div class="hi-line2">' + ds + ' · 用时 ' + formatTime(r.time) + (r.unanswered > 0 ? ' · 未答 ' + r.unanswered : '') + '</div>' +
         '</div>' +
