@@ -2356,7 +2356,7 @@ function renderWrongSet(main) {
       '<div class="result-stat total"><div class="num">' + filteredQ.length + '</div><div class="lbl">' + (filter === 'all' ? '错题总数' : '当前筛选') + '</div></div>' +
     '</div>' +
     '<div class="result-actions">' +
-      '<button class="btn btn-primary" onclick="startWrongSetPractice()">开始练习（' + countAll + '）</button>' +
+      '<button class="btn btn-primary" onclick="startWrongSetPractice()">开始练习（' + filteredQ.length + '）</button>' +
       '<button class="btn btn-secondary" onclick="confirmClearWrongSet()">清空错题集</button>' +
     '</div>' +
   '</div>' +
@@ -2390,13 +2390,17 @@ function startWrongSetPractice() {
   const idMap = {};
   for (let i = 0; i < allQ.length; i++) idMap[allQ[i].id] = allQ[i];
   const qids = loadWrongSet();
+  // v10.2: 遵守错题集列表的题型筛选，只练当前选中的分类
+  const filter = (state.wrongSetFilter && state.wrongSetFilter !== 'all') ? state.wrongSetFilter : null;
   const validQ = [];
   for (let i = 0; i < qids.length; i++) {
     const q = idMap[qids[i]];
-    if (q) validQ.push(q);
+    if (!q) continue;
+    if (filter && q.type !== filter) continue;
+    validQ.push(q);
   }
   if (validQ.length === 0) {
-    alert('错题集为空');
+    alert(filter ? '该题型暂无错题' : '错题集为空');
     return;
   }
   state.questions = validQ;
