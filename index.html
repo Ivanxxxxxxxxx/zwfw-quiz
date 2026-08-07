@@ -2096,6 +2096,10 @@ function selectOption(key, isMulti) {
     if (state.quizMode === 'exam' && state.examAutoNext === false) {
       return;
     }
+    // v10.3: 练习模式不自动跳题——停留本题查看正确答案与解析，手动点"下一题"前进
+    if (state.quizMode === 'practice') {
+      return;
+    }
     setTimeout(function() {
       if (state.quizMode === 'practice' || state.quizMode === 'wrongset' || state.quizMode === 'exam') {
         nextQuestion();  // 末尾题：考试自动 submitExam，其他 showPracticeComplete
