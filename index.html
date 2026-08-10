@@ -481,7 +481,7 @@ var QUESTIONS_DATA = {"v1":{"danxuan":[{"id":"dx1","type":"danxuan","typeName":"
 })();
 
 var state = {
-  currentVolume: 'v1',  // 当前卷
+  currentVolume: (function(){ try { const v = localStorage.getItem('zwfw_currentVolume'); if (v === 'v1' || v === 'v2' || v === 'v3' || v === 'v4') return v; } catch(e){} return 'v1'; })(),  // 当前卷（持久化）
   view: 'home',
   quizMode: null,        // 'practice' | 'exam' | 'wrongset'
   questions: [],
@@ -513,7 +513,7 @@ var state = {
     } catch (e) { return true; }
   })(),
   examBtnStyle: (function() { const v = localStorage.getItem('zwfw_examBtnStyle'); return v === 'abcd' ? 'abcd' : 'card'; })(), // v9.4: 默认选项卡样式
-  examQCount: 100,        // v9.2: 考试题量，100=固定100题，0=无上限限时挑战
+  examQCount: (function(){ try { const v = parseInt(localStorage.getItem('zwfw_examQCount'), 10); if (!isNaN(v) && v >= 0) return v; } catch(e){} return 100; })(),  // v9.2: 考试题量（持久化），100=固定100题，0=无上限限时挑战
   examUnlimited: false,   // v9.2: 是否无上限限时挑战模式
   examShuffle: (function() { try { const v = localStorage.getItem('zwfw_examShuffle'); return v === null ? false : (v === 'true'); } catch (e) { return false; } })(), // v9.4: 默认顺序（不打乱选项）
   examMixMode: (function() { try { const v = localStorage.getItem('zwfw_examMixMode'); return v || 'standard'; } catch (e) { return 'standard'; } })(), // v9.3: 题型组合 standard|custom|random
@@ -709,11 +709,13 @@ function setVolume(vol) {
     // v9.9: 改用页面内 showConfirm（iframe 预览下原生 confirm 被屏蔽，会导致切不了卷）
     showConfirm('切换卷将退出当前练习/考试，确定吗？', function() {
       state.currentVolume = vol;
+      try { localStorage.setItem('zwfw_currentVolume', vol); } catch (e) {}
       goHome();
     });
     return;
   }
   state.currentVolume = vol;
+  try { localStorage.setItem('zwfw_currentVolume', vol); } catch (e) {}
   goHome();
 }
 function formatTime(ms) {
@@ -758,9 +760,15 @@ function navigate(view, params) {
 }
 function goHome() {
   if (state.quizMode === 'exam' && !state.examResult) {
-    if (!confirm('考试进行中，确定要退出吗？已答题目将丢失。')) return;
-    stopExamTimer();
+    showConfirm('考试进行中，确定要退出吗？已答题目将丢失。', function() {
+      stopExamTimer();
+      doGoHome();
+    });
+    return;
   }
+  doGoHome();
+}
+function doGoHome() {
   // 刷题进行中：静默保存当前进度（不弹窗；范围模式不保存）
   if (state.quizMode === 'practice' && state.practiceType && state.practiceType.indexOf('_range') === -1) {
     savePracticeProgress(state.practiceType);
@@ -862,8 +870,8 @@ function renderHome(main) {
     '<div class="stats">' +
       '<div><div class="stat-num">' + total + '</div><div class="stat-label">题库总数</div></div>' +
       '<div><div class="stat-num">' + (stats.danxuan > 0 ? 3 : 0) + '</div><div class="stat-label">题型分类</div></div>' +
-      '<div><div class="stat-num">100</div><div class="stat-label">考试题数</div></div>' +
-      '<div><div class="stat-num">60</div><div class="stat-label">及格分数</div></div>' +
+      '<div><div class="stat-num">' + (state.examQCount === 0 ? '∞' : examFixedTotal()) + '</div><div class="stat-label">考试题数</div></div>' +
+      '<div><div class="stat-num">' + (state.examQCount === 0 ? '—' : Math.round(examFixedTotal() * 0.6)) + '</div><div class="stat-label">及格分数</div></div>' +
     '</div>' +
   '</div>' +
   '<div class="volume-tabs">' +
@@ -1450,6 +1458,7 @@ function selectBxRushTimer(enabled, el) {
 // v9.2: 考试模式「题量」选择（100=固定，0=无上限限时挑战）
 function selectExamQCount(n, el) {
   state.examQCount = n;
+  try { localStorage.setItem('zwfw_examQCount', String(n)); } catch (e) {}
   const parent = el.parentNode;
   const btns = parent.querySelectorAll('.exam-time-opt');
   for (let i = 0; i < btns.length; i++) btns[i].classList.remove('active');
@@ -1492,7 +1501,7 @@ function examSettingRow(label, desc, controls, extraHtml) {
 function selectExamMix(mode, el) {
   state.examMixMode = mode;
   try { localStorage.setItem('zwfw_examMixMode', mode); } catch (e) {}
-  if (state.examQCount !== 0) state.examQCount = examFixedTotal(); // 固定模式随组合更新题量
+  if (state.examQCount !== 0) { state.examQCount = examFixedTotal(); try { localStorage.setItem('zwfw_examQCount', String(state.examQCount)); } catch(e){} } // 固定模式随组合更新题量
   const parent = el.parentNode;
   const btns = parent.querySelectorAll('.exam-time-opt');
   for (let i = 0; i < btns.length; i++) btns[i].classList.remove('active');
@@ -1505,7 +1514,7 @@ function selectExamCustomCount(type, val) {
   if (n > 999) n = 999;
   state.examCustom[type] = n;
   try { localStorage.setItem('zwfw_examCustom', JSON.stringify(state.examCustom)); } catch (e) {}
-  if (state.examQCount !== 0) state.examQCount = examFixedTotal();
+  if (state.examQCount !== 0) { state.examQCount = examFixedTotal(); try { localStorage.setItem('zwfw_examQCount', String(state.examQCount)); } catch(e){} }
   render(); // 更新"固定 X 题"按钮数字
 }
 function selectExamRandomTotal(val) {
@@ -1514,7 +1523,7 @@ function selectExamRandomTotal(val) {
   if (n > 999) n = 999;
   state.examRandomTotal = n;
   try { localStorage.setItem('zwfw_examRandomTotal', String(n)); } catch (e) {}
-  if (state.examQCount !== 0) state.examQCount = n;
+  if (state.examQCount !== 0) { state.examQCount = n; try { localStorage.setItem('zwfw_examQCount', String(n)); } catch(e){} }
   render();
 }
 // v9.2: 打乱单题选项顺序并同步重映射答案（key 仍为 A/B/C/D…）
@@ -1722,19 +1731,20 @@ function startBudingxiangRush() {
   const ruleMsg = isFallback
     ? '快答规则（当前卷无不定项，从所有题型抽题）：\n• 共 10 道随机题（单选/多选/判断混合）\n• 每题 5 秒倒计时，时间到自动判错\n• 答对得 1 分 + 剩余秒数 × 2 奖励分\n• 答错 0 分，自动加入错题集\n\n点击"确定"开始'
     : '快答规则：\n• 共 10 道不定项选择题\n• 每题 5 秒倒计时，时间到自动判错\n• 答对得 1 分 + 剩余秒数 × 2 奖励分\n• 答错 0 分，自动加入错题集\n\n点击"确定"开始';
-  if (!confirm(ruleMsg)) return;
-  state.questions = pickRandom(pool, 10);
-  state.currentIdx = 0;
-  state.answers = {};
-  state.submitted = false;
-  state.submittedSet = {};
-  state.examLocked = {};
-  state.practiceType = null;
-  state.quizMode = 'budingxiang_rush';
-  state.bxRushActive = true;
-  state.bxRushSource = isFallback ? 'all' : 'budingxiang'; // v6.10: 'budingxiang' = 仅不定项, 'all' = 所有题型
-  state.startTime = Date.now();
-  navigate('quiz');
+  showConfirm(ruleMsg, function() {
+    state.questions = pickRandom(pool, 10);
+    state.currentIdx = 0;
+    state.answers = {};
+    state.submitted = false;
+    state.submittedSet = {};
+    state.examLocked = {};
+    state.practiceType = null;
+    state.quizMode = 'budingxiang_rush';
+    state.bxRushActive = true;
+    state.bxRushSource = isFallback ? 'all' : 'budingxiang'; // v6.10: 'budingxiang' = 仅不定项, 'all' = 所有题型
+    state.startTime = Date.now();
+    navigate('quiz');
+  });
 }
 function bxRushStartTimer() {
   if (state.quizMode !== 'budingxiang_rush') return;
@@ -1907,7 +1917,7 @@ function renderQuiz(main) {
     const mm = String(Math.floor(sec / 60)).padStart(2, '0');
     const ss = String(sec % 60).padStart(2, '0');
     const remainCls = sec <= 30 ? 'danger' : (sec <= 60 ? 'warn' : '');
-    examTimerBar = '<div class="exam-timer-bar ' + remainCls + '" id="examTimerWrap"><span class="exam-timer-label">⏱ 剩余时间</span><div class="exam-timer-track"><div class="exam-timer-fill" id="examTimerBar"></div></span><span class="exam-timer-text" id="examTimerText">' + mm + ':' + ss + '</span></div>';
+    examTimerBar = '<div class="exam-timer-bar ' + remainCls + '" id="examTimerWrap"><span class="exam-timer-label">⏱ 剩余时间</span><div class="exam-timer-track"><div class="exam-timer-fill" id="examTimerBar"></div></div><span class="exam-timer-text" id="examTimerText">' + mm + ':' + ss + '</span></div>';
   }
   // v4.9: 修复 v4.7 遗留 bug — bxTimerBar 之前没拼到 html，现在拼上
   let html = bxTimerBar + examTimerBar + '<div class="quiz-bar">' +
@@ -2419,10 +2429,10 @@ function startWrongSetPractice() {
   navigate('quiz');
 }
 function confirmClearWrongSet() {
-  if (confirm('确定要清空错题集吗？此操作不可恢复。')) {
+  showConfirm('确定要清空错题集吗？此操作不可恢复。', function() {
     clearAllWrongSet();
     render();
-  }
+  });
 }function setWrongSetFilter(type) {
   state.wrongSetFilter = type;
   const main = document.getElementById('mainContent');
@@ -2443,36 +2453,37 @@ function submitExam() {
   if (unanswered > 0) {
     confirmMsg += '\n还有 ' + unanswered + ' 题未作答，将计 0 分';
   }
-  if (!confirm(confirmMsg)) return;
-  // 仅统计已呈现的题目（无上限模式池远大于实际作答数）
-  const served = isUnlimited ? state.questions.slice(0, presented) : state.questions;
-  for (let i = 0; i < served.length; i++) {
-    const q = served[i];
-    const userAns = state.answers[q.id] || [];
-    if (userAns.length === 0 || !isAnswerCorrect(q, userAns)) {
-      addToWrongSet(q.id);
+  showConfirm(confirmMsg, function() {
+    // 仅统计已呈现的题目（无上限模式池远大于实际作答数）
+    const served = isUnlimited ? state.questions.slice(0, presented) : state.questions;
+    for (let i = 0; i < served.length; i++) {
+      const q = served[i];
+      const userAns = state.answers[q.id] || [];
+      if (userAns.length === 0 || !isAnswerCorrect(q, userAns)) {
+        addToWrongSet(q.id);
+      }
     }
-  }
-  let correctCount = 0;
-  const result = served.map(function(q) {
-    const userAns = state.answers[q.id] || [];
-    const ok = isAnswerCorrect(q, userAns);
-    if (ok) correctCount++;
-    return { q: q, userAns: userAns, ok: ok };
+    let correctCount = 0;
+    const result = served.map(function(q) {
+      const userAns = state.answers[q.id] || [];
+      const ok = isAnswerCorrect(q, userAns);
+      if (ok) correctCount++;
+      return { q: q, userAns: userAns, ok: ok };
+    });
+    state.examResult = {
+      total: presented,
+      correct: correctCount,
+      wrong: presented - correctCount,
+      unanswered: unanswered,
+      score: correctCount,
+      time: Date.now() - state.startTime,
+      details: result,
+      unlimited: isUnlimited,
+      passLine: isUnlimited ? 0 : Math.round(presented * 0.6)
+    };
+    saveExamRecord(state.examResult);
+    navigate('exam-result');
   });
-  state.examResult = {
-    total: presented,
-    correct: correctCount,
-    wrong: presented - correctCount,
-    unanswered: unanswered,
-    score: correctCount,
-    time: Date.now() - state.startTime,
-    details: result,
-    unlimited: isUnlimited,
-    passLine: isUnlimited ? 0 : Math.round(presented * 0.6)
-  };
-  saveExamRecord(state.examResult);
-  navigate('exam-result');
 }
 function renderExamResult(main) {
   const r = state.examResult;
@@ -2503,8 +2514,8 @@ function renderExamResult(main) {
       '</div>' +
     '</div>';
   }
-  '<div class="result-actions">' +
-    '<button class="btn btn-primary" onclick="startExam()">再来一次</button>' +
+  html += '<div class="result-actions">' +
+    '<button class="btn btn-primary" onclick="startExam(state.examTimeLimit)">再来一次</button>' +
     '<button class="btn btn-secondary" onclick="goHome()">返回首页</button>' +
   '</div>' +
   '<div class="section-title">答题详情</div>' +
@@ -2654,9 +2665,10 @@ function renderExamHistory(main) {
   main.innerHTML = html;
 }
 function clearExamHistory() {
-  if (!confirm('确定清空全部成绩历史吗？此操作不可撤销')) return;
-  saveExamHistory([]);
-  render();
+  showConfirm('确定清空全部成绩历史吗？此操作不可撤销', function() {
+    saveExamHistory([]);
+    render();
+  });
 }
 </script>
 </body>
