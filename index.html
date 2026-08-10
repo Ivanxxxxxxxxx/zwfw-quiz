@@ -84,8 +84,18 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .settings-card-sub { font-size: 12px; color: #9ca3af; font-weight: 400; }
 .settings-grid { display: grid; grid-template-columns: 1fr; gap: 10px; align-items: start; }
 @media (min-width: 600px) { .settings-grid { grid-template-columns: 1fr 1fr; gap: 12px; } }
-/* v10.6: 功能开关分组标题（跨整行） */
-.settings-group-title { grid-column: 1 / -1; font-size: 13px; font-weight: 600; color: #6b7280; border-bottom: 1px solid #eef2f7; padding-bottom: 4px; margin-top: 2px; }
+/* v10.7: 功能开关折叠面板（无障碍 disclosure） */
+.fold-panel { border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; margin-bottom: 10px; background: #fff; }
+.fold-head { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 13px 16px; border: none; background: #f8fafc; cursor: pointer; font-size: 15px; font-weight: 600; color: #374151; text-align: left; transition: background 150ms ease; }
+.fold-head:hover { background: #f1f5f9; }
+.fold-head:focus-visible { outline: 2px solid #3b82f6; outline-offset: -2px; }
+.fold-title { display: inline-flex; align-items: center; }
+.fold-arrow { flex: 0 0 auto; font-size: 13px; color: #6b7280; transition: transform 220ms ease; }
+.fold-head[aria-expanded="false"] .fold-arrow { transform: rotate(-90deg); }
+.fold-body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 260ms ease, opacity 220ms ease; }
+.fold-body.collapsed { grid-template-rows: 0fr; opacity: 0; }
+.fold-body > .fold-inner { overflow: hidden; min-height: 0; }
+.fold-inner { padding: 14px 16px; }
 .exam-setting-row { padding: 12px 14px; background: #f8fafc; border: 1px solid #eef2f7; border-radius: 10px; }
 .exam-setting-label { font-size: 14px; font-weight: 600; color: #374151; }
 .exam-setting-desc { font-size: 12px; color: #9ca3af; line-height: 1.5; margin: 3px 0 8px; }
@@ -862,6 +872,26 @@ function renderPracticeComplete(main) {
     navigate('home');
   }
 }
+// v10.7: 功能开关折叠面板（无障碍 disclosure）
+function isFoldCollapsed(k) {
+  var raw = null;
+  try { raw = JSON.parse(localStorage.getItem('zwfw_foldCollapsed') || 'null'); } catch (e) { raw = null; }
+  if (raw && typeof raw === 'object' && Object.prototype.hasOwnProperty.call(raw, k)) return !!raw[k];
+  return k !== 'exam'; // 默认：模拟考试展开，练习/快答折叠
+}
+function toggleFold(id, btn) {
+  var key = id.replace(/^fold-/, '');
+  var expanded = btn.getAttribute('aria-expanded') === 'true';
+  var next = !expanded;
+  btn.setAttribute('aria-expanded', String(next));
+  var body = document.getElementById(id);
+  if (body) body.classList.toggle('collapsed', !next);
+  var raw = {};
+  try { raw = JSON.parse(localStorage.getItem('zwfw_foldCollapsed') || '{}'); } catch (e) { raw = {}; }
+  if (!raw || typeof raw !== 'object') raw = {};
+  raw[key] = !next;
+  try { localStorage.setItem('zwfw_foldCollapsed', JSON.stringify(raw)); } catch (e) {}
+}
 function renderHome(main) {
   const stats = getVolumeStats();
   const v1s = getVolumeStats('v1');
@@ -982,9 +1012,11 @@ function renderHome(main) {
   '</div>' +
     '<div class="section-title">功能开关</div>' +
     '<div class="settings-card">' +
-      '<div class="settings-card-title">功能开关 <span class="settings-card-sub">模拟考试 · 练习 · 不定项快答</span></div>' +
+      '<div class="settings-card-title">功能开关</div>' +
+      '<div class="fold-panel">' +
+        '<button class="fold-head" type="button" aria-expanded="' + (isFoldCollapsed('exam') ? 'false' : 'true') + '" aria-controls="fold-exam" onclick="toggleFold(\'fold-exam\', this)"><span class="fold-title">模拟考试</span><span class="fold-arrow">▾</span></button>' +
+        '<div class="fold-body' + (isFoldCollapsed('exam') ? ' collapsed' : '') + '" id="fold-exam"><div class="fold-inner">' +
       '<div class="settings-grid">' +
-        '<div class="settings-group-title">模拟考试</div>' +
         examSettingRow('题型组合', '标准组合：固定 100 题（60 单选 + 20 多选 + 20 判断）；自定义：自己设定各题型数量；全随机：所有题型混合随机抽取',
           '<button class="exam-time-opt' + (state.examMixMode === 'standard' ? ' active' : '') + '" onclick="selectExamMix(\'standard\', this)">标准组合</button>' +
           '<button class="exam-time-opt' + (state.examMixMode === 'custom' ? ' active' : '') + '" onclick="selectExamMix(\'custom\', this)">自定义</button>' +
@@ -1010,17 +1042,25 @@ function renderHome(main) {
           '<span class="exam-time-custom' + (isCustomTime() ? ' active' : '') + '">自定义 <input id="examCustomMin" type="number" min="1" max="180" step="1" value="' + state.examCustomMin + '" class="exam-time-input" /> 分钟 <button class="exam-time-apply" onclick="applyCustomTime()">应用</button></span>') +
         examSettingRow('跳题方式', '自动：答完本题自动进入下一题；手动：需点"下一题"才进入',
           '<button class="exam-time-opt' + (state.examAutoNext ? ' active' : '') + '" data-auto="true" onclick="selectExamAutoNext(true, this)">自动跳题</button><button class="exam-time-opt' + (state.examAutoNext ? '' : ' active') + '" data-auto="false" onclick="selectExamAutoNext(false, this)">手动下一题</button>') +
-        '<div class="settings-group-title">答题 & 显示</div>' +
+      '</div></div></div></div>' +
+      '<div class="fold-panel">' +
+        '<button class="fold-head" type="button" aria-expanded="' + (isFoldCollapsed('practice') ? 'false' : 'true') + '" aria-controls="fold-practice" onclick="toggleFold(\'fold-practice\', this)"><span class="fold-title">练习模式</span><span class="fold-arrow">▾</span></button>' +
+        '<div class="fold-body' + (isFoldCollapsed('practice') ? ' collapsed' : '') + '" id="fold-practice"><div class="fold-inner">' +
+      '<div class="settings-grid">' +
         examSettingRow('答题按钮', '选项卡：直接点击选项卡片作答；ABCD键：点击圆形字母按钮作答',
           '<button class="exam-time-opt' + (state.examBtnStyle === 'abcd' ? ' active' : '') + '" onclick="event.stopPropagation();selectExamBtnStyle(\'abcd\',this)">ABCD键</button><button class="exam-time-opt' + (state.examBtnStyle === 'card' ? ' active' : '') + '" onclick="event.stopPropagation();selectExamBtnStyle(\'card\',this)">选项卡</button>') +
         examSettingRow('选项顺序', '乱序：打乱选项位置，防止死记"A 就是答案"；顺序：保持题目原始选项顺序',
           '<button class="exam-time-opt' + (state.examShuffle ? ' active' : '') + '" data-shuffle="true" onclick="selectExamShuffle(true, this)">乱序</button><button class="exam-time-opt' + (state.examShuffle ? '' : ' active') + '" data-shuffle="false" onclick="selectExamShuffle(false, this)">顺序</button>') +
         examSettingRow('练习跳题', '自动：答完本题自动进入下一题；手动：停留本题查看解析，需点"下一题"才前进',
           '<button class="exam-time-opt' + (state.practiceAutoNext ? ' active' : '') + '" onclick="selectPracticeAutoNext(true, this)">自动跳题</button><button class="exam-time-opt' + (state.practiceAutoNext ? '' : ' active') + '" onclick="selectPracticeAutoNext(false, this)">手动下一题</button>') +
-        '<div class="settings-group-title">不定项快答</div>' +
+      '</div></div></div></div>' +
+      '<div class="fold-panel">' +
+        '<button class="fold-head" type="button" aria-expanded="' + (isFoldCollapsed('bxrush') ? 'false' : 'true') + '" aria-controls="fold-bxrush" onclick="toggleFold(\'fold-bxrush\', this)"><span class="fold-title">不定项快答</span><span class="fold-arrow">▾</span></button>' +
+        '<div class="fold-body' + (isFoldCollapsed('bxrush') ? ' collapsed' : '') + '" id="fold-bxrush"><div class="fold-inner">' +
+      '<div class="settings-grid">' +
         examSettingRow('快答倒计时', '开启后每题 5 秒倒计时，时间到自动判错；关闭则不限时，答对 1 分',
           '<button class="exam-time-opt' + (state.bxRushTimerEnabled ? ' active' : '') + '" onclick="selectBxRushTimer(true, this)">开</button><button class="exam-time-opt' + (state.bxRushTimerEnabled ? '' : ' active') + '" onclick="selectBxRushTimer(false, this)">关</button>') +
-      '</div>' +
+      '</div></div></div></div>' +
     '</div>' +
     '<div class="section-title">题库统计</div>' +
   '<div class="category-list">';
