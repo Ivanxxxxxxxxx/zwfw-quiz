@@ -2253,9 +2253,12 @@ function selectOption(key, isMulti) {
     if (state.quizMode === 'exam' && state.examAutoNext === false) {
       return;
     }
-    // v10.6: 练习/错题集模式——默认停留本题查看解析，开启"自动跳题"后答完自动前进
-    if (state.quizMode === 'practice' || state.quizMode === 'wrongset') {
+    // v10.7: 练习模式——开启"自动跳题"后答完自动前进；错题集模式强制手动跳题（始终停留查看解析）
+    if (state.quizMode === 'practice') {
       if (state.practiceAutoNext) { setTimeout(nextQuestion, 0); }
+      return;
+    }
+    if (state.quizMode === 'wrongset') {
       return;
     }
     setTimeout(function() {
@@ -2318,8 +2321,8 @@ function submitAnswer() {
   }
   savePracticeProgress(state.practiceType);
   render();
-  // v10.6: 练习/错题集多选题——开启"自动跳题"后答完自动前进
-  if ((state.quizMode === 'practice' || state.quizMode === 'wrongset') && state.practiceAutoNext) {
+  // v10.7: 练习模式多选题——开启"自动跳题"后答完自动前进；错题集强制手动跳题
+  if (state.quizMode === 'practice' && state.practiceAutoNext) {
     setTimeout(nextQuestion, 0);
   }
 }
