@@ -116,7 +116,7 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .confirm-msg { font-size: 14px; line-height: 1.6; color: #374151; white-space: pre-line; margin-bottom: 18px; }
 .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
 .confirm-actions .btn { min-height: 40px; padding: 0 18px; }
-@media (prefers-color-scheme: dark) {
+html[data-theme="dark"] {
   .confirm-card { background: #1f2937; }
   .confirm-msg { color: #e5e7eb; }
 }
@@ -340,7 +340,7 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
   .exam-timer-bar.danger { animation: none; }
 }
-@media (prefers-color-scheme: dark) {
+html[data-theme="dark"] {
   body { background: #111827; color: #e5e7eb; }
   .app-header { box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
   .home-hero { box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
@@ -441,6 +441,46 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
   /* v8.0: 暗色模式焦点环 */
   :focus-visible { outline-color: #60a5fa; }
 }
+/* v10.8: 深色模式补充覆盖——置于末尾，确保覆盖后续基础规则（settings/fold/exam-time/volume-tab/exam-timer 等原缺失或被压住的项） */
+html[data-theme="dark"] {
+  .app-header { background: #0f172a; border-bottom-color: #1f2937; }
+  .settings-card { background: #1f2937; border-color: #374151; }
+  .settings-card-title { color: #e5e7eb; }
+  .settings-card-sub { color: #9ca3af; }
+  .fold-panel { background: #1f2937; border-color: #374151; }
+  .fold-head { background: #111827; color: #e5e7eb; }
+  .fold-head:hover { background: #1f2937; }
+  .exam-setting-row { background: #111827; border-color: #1f2937; }
+  .exam-setting-label { color: #e5e7eb; }
+  .exam-setting-desc { color: #9ca3af; }
+  .exam-time-opt { background: #1f2937; color: #d1d5db; border-color: #374151; }
+  .exam-time-opt:hover { border-color: #60a5fa; color: #93c5fd; }
+  .exam-time-opt.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+  .exam-time-custom { background: #1f2937; color: #d1d5db; border-color: #374151; }
+  .exam-time-input { background: #111827; color: #e5e7eb; border-color: #374151; }
+  .exam-time-input:focus { border-color: #60a5fa; }
+  .volume-tab { background: #374151; color: #d1d5db; }
+  .volume-tab.active { background: #1e3a8a; color: #93c5fd; border-color: #3b82f6; box-shadow: 0 2px 8px rgba(59,130,246,.25); }
+  .bx-timer-bar { background: #3a2f12; border-color: #b45309; }
+  .bx-timer-bar .bx-timer-label { color: #fcd34d; }
+  .bx-timer-bar .bx-timer-track { background: #4a3a14; }
+  .bx-timer-bar .bx-timer-text { color: #fca5a5; }
+  .exam-timer-bar { background: #0f2e22; border-color: #065f46; }
+  .exam-timer-bar .exam-timer-label { color: #6ee7b7; }
+  .exam-timer-bar .exam-timer-track { background: #064e3b; }
+  .exam-timer-bar .exam-timer-text { color: #6ee7b7; }
+  .exam-timer-bar.warn { background: #3a2f12; border-color: #b45309; }
+  .exam-timer-bar.warn .exam-timer-label { color: #fcd34d; }
+  .exam-timer-bar.warn .exam-timer-track { background: #4a3a14; }
+  .exam-timer-bar.warn .exam-timer-text { color: #fcd34d; }
+  .exam-timer-bar.danger { background: #2a1414; border-color: #991b1b; }
+  .exam-timer-bar.danger .exam-timer-label { color: #fca5a5; }
+  .exam-timer-bar.danger .exam-timer-track { background: #4a1f1f; }
+  .exam-timer-bar.danger .exam-timer-text { color: #fca5a5; }
+  .section-title { color: #d1d5db; }
+  .empty { color: #9ca3af; }
+  .home-hero .stat-label { color: #9ca3af; }
+}
 </style>
 </head>
 <body>
@@ -533,7 +573,8 @@ var state = {
       return v === 'true' || v === true;
     } catch (e) { return false; }
   })(),
-  examBtnStyle: (function() { const v = localStorage.getItem('zwfw_examBtnStyle'); return v === 'abcd' ? 'abcd' : 'card'; })(), // v9.4: 默认选项卡样式
+  answerBtnStyle: (function() { const v = localStorage.getItem('zwfw_examBtnStyle'); return v === 'abcd' ? 'abcd' : 'card'; })(), // v10.8: 全局答题按钮样式（选项卡/ABCD键），LS 键沿用 zwfw_examBtnStyle 兼容旧偏好
+  darkMode: (function() { try { const v = localStorage.getItem('zwfw_darkMode'); return (v === 'light' || v === 'dark' || v === 'system') ? v : 'system'; } catch (e) { return 'system'; } })(), // v10.8: 浅色/深色/跟随系统
   examQCount: (function(){ try { const v = parseInt(localStorage.getItem('zwfw_examQCount'), 10); if (!isNaN(v) && v >= 0) return v; } catch(e){} return 100; })(),  // v9.2: 考试题量（持久化），100=固定100题，0=无上限限时挑战
   examUnlimited: false,   // v9.2: 是否无上限限时挑战模式
   examShuffle: (function() { try { const v = localStorage.getItem('zwfw_examShuffle'); return v === null ? false : (v === 'true'); } catch (e) { return false; } })(), // v9.4: 默认顺序（不打乱选项）
@@ -892,6 +933,25 @@ function toggleFold(id, btn) {
   raw[key] = !next;
   try { localStorage.setItem('zwfw_foldCollapsed', JSON.stringify(raw)); } catch (e) {}
 }
+/* v10.8: 深色模式——system 跟随系统，否则按用户选择设置 data-theme */
+function applyTheme() {
+  var dm = state.darkMode || 'system';
+  var root = document.documentElement;
+  var theme;
+  if (dm === 'light' || dm === 'dark') {
+    theme = dm;
+  } else {
+    var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+    theme = (mq && mq.matches) ? 'dark' : 'light';
+  }
+  root.setAttribute('data-theme', theme);
+}
+function selectDarkMode(mode, el) {
+  state.darkMode = (mode === 'system') ? 'system' : (mode === 'light' ? 'light' : 'dark');
+  try { localStorage.setItem('zwfw_darkMode', state.darkMode); } catch (e) {}
+  applyTheme();
+  render();
+}
 function renderHome(main) {
   const stats = getVolumeStats();
   const v1s = getVolumeStats('v1');
@@ -1042,15 +1102,13 @@ function renderHome(main) {
           '<span class="exam-time-custom' + (isCustomTime() ? ' active' : '') + '">自定义 <input id="examCustomMin" type="number" min="1" max="180" step="1" value="' + state.examCustomMin + '" class="exam-time-input" /> 分钟 <button class="exam-time-apply" onclick="applyCustomTime()">应用</button></span>') +
         examSettingRow('跳题方式', '自动：答完本题自动进入下一题；手动：需点"下一题"才进入',
           '<button class="exam-time-opt' + (state.examAutoNext ? ' active' : '') + '" data-auto="true" onclick="selectExamAutoNext(true, this)">自动跳题</button><button class="exam-time-opt' + (state.examAutoNext ? '' : ' active') + '" data-auto="false" onclick="selectExamAutoNext(false, this)">手动下一题</button>') +
+        examSettingRow('选项顺序', '乱序：打乱选项位置，防止死记"A 就是答案"；顺序：保持题目原始选项顺序（仅考试模式生效）',
+          '<button class="exam-time-opt' + (state.examShuffle ? ' active' : '') + '" data-shuffle="true" onclick="selectExamShuffle(true, this)">乱序</button><button class="exam-time-opt' + (state.examShuffle ? '' : ' active') + '" data-shuffle="false" onclick="selectExamShuffle(false, this)">顺序</button>') +
       '</div></div></div></div>' +
       '<div class="fold-panel">' +
         '<button class="fold-head" type="button" aria-expanded="' + (isFoldCollapsed('practice') ? 'false' : 'true') + '" aria-controls="fold-practice" onclick="toggleFold(\'fold-practice\', this)"><span class="fold-title">练习模式</span><span class="fold-arrow">▾</span></button>' +
         '<div class="fold-body' + (isFoldCollapsed('practice') ? ' collapsed' : '') + '" id="fold-practice"><div class="fold-inner">' +
       '<div class="settings-grid">' +
-        examSettingRow('答题按钮', '选项卡：直接点击选项卡片作答；ABCD键：点击圆形字母按钮作答',
-          '<button class="exam-time-opt' + (state.examBtnStyle === 'abcd' ? ' active' : '') + '" onclick="event.stopPropagation();selectExamBtnStyle(\'abcd\',this)">ABCD键</button><button class="exam-time-opt' + (state.examBtnStyle === 'card' ? ' active' : '') + '" onclick="event.stopPropagation();selectExamBtnStyle(\'card\',this)">选项卡</button>') +
-        examSettingRow('选项顺序', '乱序：打乱选项位置，防止死记"A 就是答案"；顺序：保持题目原始选项顺序',
-          '<button class="exam-time-opt' + (state.examShuffle ? ' active' : '') + '" data-shuffle="true" onclick="selectExamShuffle(true, this)">乱序</button><button class="exam-time-opt' + (state.examShuffle ? '' : ' active') + '" data-shuffle="false" onclick="selectExamShuffle(false, this)">顺序</button>') +
         examSettingRow('练习跳题', '自动：答完本题自动进入下一题；手动：停留本题查看解析，需点"下一题"才前进',
           '<button class="exam-time-opt' + (state.practiceAutoNext ? ' active' : '') + '" onclick="selectPracticeAutoNext(true, this)">自动跳题</button><button class="exam-time-opt' + (state.practiceAutoNext ? '' : ' active') + '" onclick="selectPracticeAutoNext(false, this)">手动下一题</button>') +
       '</div></div></div></div>' +
@@ -1060,6 +1118,15 @@ function renderHome(main) {
       '<div class="settings-grid">' +
         examSettingRow('快答倒计时', '开启后每题 5 秒倒计时，时间到自动判错；关闭则不限时，答对 1 分',
           '<button class="exam-time-opt' + (state.bxRushTimerEnabled ? ' active' : '') + '" onclick="selectBxRushTimer(true, this)">开</button><button class="exam-time-opt' + (state.bxRushTimerEnabled ? '' : ' active') + '" onclick="selectBxRushTimer(false, this)">关</button>') +
+      '</div></div></div></div>' +
+      '<div class="fold-panel">' +
+        '<button class="fold-head" type="button" aria-expanded="' + (isFoldCollapsed('system') ? 'false' : 'true') + '" aria-controls="fold-system" onclick="toggleFold(\'fold-system\', this)"><span class="fold-title">系统设置</span><span class="fold-arrow">▾</span></button>' +
+        '<div class="fold-body' + (isFoldCollapsed('system') ? ' collapsed' : '') + '" id="fold-system"><div class="fold-inner">' +
+      '<div class="settings-grid">' +
+        examSettingRow('答题按钮', '选项卡：直接点击选项卡片作答；ABCD键：点击圆形字母按钮作答（全局生效：考试/练习/错题集/快答统一）',
+          '<button class="exam-time-opt' + (state.answerBtnStyle === 'abcd' ? ' active' : '') + '" onclick="event.stopPropagation();selectAnswerBtnStyle(\'abcd\',this)">ABCD键</button><button class="exam-time-opt' + (state.answerBtnStyle === 'card' ? ' active' : '') + '" onclick="event.stopPropagation();selectAnswerBtnStyle(\'card\',this)">选项卡</button>') +
+        examSettingRow('深色模式', '浅色 / 深色外观，或跟随系统；选择后全应用并持久保存',
+          '<button class="exam-time-opt' + (state.darkMode === 'system' ? ' active' : '') + '" onclick="event.stopPropagation();selectDarkMode(\'system\',this)">跟随系统</button><button class="exam-time-opt' + (state.darkMode === 'light' ? ' active' : '') + '" onclick="event.stopPropagation();selectDarkMode(\'light\',this)">浅色</button><button class="exam-time-opt' + (state.darkMode === 'dark' ? ' active' : '') + '" onclick="event.stopPropagation();selectDarkMode(\'dark\',this)">深色</button>') +
       '</div></div></div></div>' +
     '</div>' +
     '<div class="section-title">题库统计</div>' +
@@ -1505,8 +1572,8 @@ function selectPracticeAutoNext(auto, el) {
 }
 // v6.11: 快答模式"倒计时开/关"开关
 // v7.0: 答题按钮样式切换（ABCD圆形按钮 / 点击选项卡片）
-function selectExamBtnStyle(style, el) {
-  state.examBtnStyle = style;
+function selectAnswerBtnStyle(style, el) {
+  state.answerBtnStyle = style;
   try { localStorage.setItem('zwfw_examBtnStyle', style); } catch(e) {}
   var row = el.parentElement;
   if (row) {
@@ -1725,7 +1792,7 @@ function startExam(timeLimit) {
     '\n• 答错的题自动加入"错题集"' +
     '\n• 答题过程中可随时点"交卷"即时评分' +
     '\n• 跳题模式：' + (state.examAutoNext ? '答题后自动跳下一题' : '答题后需手动点【下一题】') +
-    '\n• 按钮样式：' + (state.examBtnStyle === 'abcd' ? 'ABCD圆形按钮' : '点击选项卡片') +
+    '\n• 按钮样式：' + (state.answerBtnStyle === 'abcd' ? 'ABCD圆形按钮' : '点击选项卡片') +
     '\n• 选项顺序：' + (state.examShuffle ? '已打乱（正确答案随机分布）' : '原始顺序') +
     endRule + timeRule +
     '\n\n点击"确定"开始考试';
@@ -1965,7 +2032,7 @@ function renderQuiz(main) {
   const isMulti = q.type === 'duoxuan' || q.type === 'budingxiang';
   const userAns = state.answers[q.id] || [];
   const isExam = state.quizMode === 'exam';
-  const btnStyle = isExam ? state.examBtnStyle : 'card'; // v9.4: 刷题/错题集/快答一律选项卡样式
+  const btnStyle = state.answerBtnStyle; // v10.8: 全局答题按钮样式（所有模式统一）
   const isWrongset = state.quizMode === 'wrongset';
   const isRush = state.quizMode === 'budingxiang_rush';  // v6.14: 补 v6.13 漏掉的声明（renderQuiz 顶部）
   const examThisLocked = isExam && state.examLocked[q.id];
@@ -2708,6 +2775,13 @@ function enableKeyboard(){
 document.addEventListener('DOMContentLoaded', function() {
   state.favoriteQids = loadFavorites();
   $('#fab').onclick = goHome;
+  applyTheme();
+  try {
+    var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+    var onSys = function() { if ((state.darkMode || 'system') === 'system') applyTheme(); };
+    if (mq && mq.addEventListener) mq.addEventListener('change', onSys);
+    else if (mq && mq.addListener) mq.addListener(onSys);
+  } catch (e) {}
   render();
 });
 
