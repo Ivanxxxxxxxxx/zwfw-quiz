@@ -653,6 +653,24 @@ function clearAllWrongSet() {
   saveWrongSet([]);
   state.wrongSetQids = [];
 }
+// v10.11: 只清空某个题型的错题（其余题型保留）
+function clearWrongSetByType(type) {
+  if (!type || type === 'all') { clearAllWrongSet(); return; }
+  // 跨所有卷建 id->题目 映射，确保不同卷的同题型都能正确识别
+  const idMap = {};
+  Object.keys(QUESTIONS_DATA).forEach(function(v) {
+    ['danxuan', 'duoxuan', 'panduan', 'budingxiang'].forEach(function(t) {
+      const arr = (QUESTIONS_DATA[v] && QUESTIONS_DATA[v][t]) || [];
+      for (let i = 0; i < arr.length; i++) idMap[arr[i].id] = arr[i];
+    });
+  });
+  const keep = loadWrongSet().filter(function(qid) {
+    const q = idMap[qid];
+    return !(q && q.type === type); // 只剔除匹配该题型且能定位到的
+  });
+  saveWrongSet(keep);
+  state.wrongSetQids = keep;
+}
 
 // ============ v7.0: 收藏夹 ============
 const STORAGE_KEY_FAVORITES = 'echo_quiz_favorites_v1';
@@ -2592,7 +2610,9 @@ function renderWrongSet(main) {
     '</div>' +
     '<div class="result-actions">' +
       '<button class="btn btn-primary" onclick="startWrongSetPractice()">开始练习（' + filteredQ.length + '）</button>' +
-      '<button class="btn btn-secondary" onclick="confirmClearWrongSet()">清空错题集</button>' +
+      (filter === 'all'
+        ? '<button class="btn btn-secondary" onclick="confirmClearWrongSet(null,0)">清空错题集</button>'
+        : '<button class="btn btn-secondary" onclick="confirmClearWrongSet(\'' + filter + '\',' + filteredQ.length + ')">清空' + (filter === 'danxuan' ? '单选' : filter === 'duoxuan' ? '多选' : filter === 'panduan' ? '判断' : '不定项') + '错题</button>') +
     '</div>' +
   '</div>' +
   '<div class="section-title">错题列表' + (filter === 'all' ? '' : '（' + (filter === 'danxuan' ? '单选' : filter === 'duoxuan' ? '多选' : filter === 'panduan' ? '判断' : '不定项') + '）') + '</div>';
@@ -2649,11 +2669,19 @@ function startWrongSetPractice() {
   state.startTime = Date.now();
   navigate('quiz');
 }
-function confirmClearWrongSet() {
-  showConfirm('确定要清空错题集吗？此操作不可恢复。', function() {
-    clearAllWrongSet();
-    render();
-  });
+function confirmClearWrongSet(type, count) {
+  if (type && type !== 'all') {
+    const name = type === 'danxuan' ? '单选' : type === 'duoxuan' ? '多选' : type === 'panduan' ? '判断' : '不定项';
+    showConfirm('确定清空【' + name + '】错题（' + (count || 0) + ' 题）吗？此操作不可恢复，其余题型错题保留。', function() {
+      clearWrongSetByType(type);
+      render();
+    });
+  } else {
+    showConfirm('确定要清空错题集吗？此操作不可恢复。', function() {
+      clearAllWrongSet();
+      render();
+    });
+  }
 }function setWrongSetFilter(type) {
   state.wrongSetFilter = type;
   const main = document.getElementById('mainContent');
