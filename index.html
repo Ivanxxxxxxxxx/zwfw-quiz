@@ -547,6 +547,7 @@ var state = {
   examResult: null,
   examLocked: {},
   practiceType: null,    // 当前刷题模式对应的题集类型：'all'|'danxuan'|'duoxuan'|'panduan'|'budingxiang'|null
+  lastPracticeIdx: -1,    // v10.11: 自动跳题模式下记录"最后提交的题"index，作为进度恢复点（避免恢复成被自动跳走的下一题）
   wrongSetQids: [],      // 错题集中的题目 id（持久化）
   favoriteQids: [],      // v7.0: 收藏夹题目 id（持久化，启动时从 LS 加载）
   wrongSetCurrentQids: [], // 错题集刷题时实际题目 id 列表
@@ -596,11 +597,18 @@ function practiceKey(vol, type) { return STORAGE_KEY_PRACTICE_PREFIX + (vol || '
 function examKey(vol) { return 'echo_quiz_exam_' + (vol || 'v1') + '_v1'; }
 function wrongExamKey(vol) { return 'echo_quiz_wrong_' + (vol || 'v1') + '_v1'; }
 
+function resumeIdxForSave() {
+  // 自动跳题模式下，恢复点应是"最后提交的题"，而非被自动跳走的下一题（空题）
+  if (state.quizMode === 'practice' && state.practiceAutoNext && state.lastPracticeIdx >= 0) {
+    return state.lastPracticeIdx;
+  }
+  return state.currentIdx;
+}
 function savePracticeProgress(type) {
   if (!type) return;
   try {
     const data = {
-      currentIdx: state.currentIdx,
+      currentIdx: resumeIdxForSave(),
       answers: state.answers,
       submittedSet: state.submittedSet,
       qids: state.questions.map(function(q) { return q.id; })
@@ -2263,6 +2271,7 @@ function selectOption(key, isMulti) {
     if (state.quizMode === 'practice' || state.quizMode === 'wrongset') {
       state.submitted = true;
       state.submittedSet[q.id] = true;
+      state.lastPracticeIdx = state.currentIdx;
       savePracticeProgress(state.practiceType);
     }
     // 答错加入错题集（考试/错题集模式上面已加；刷题模式首次加；幂等）
@@ -2276,7 +2285,7 @@ function selectOption(key, isMulti) {
     }
     // v10.7: 练习模式——开启"自动跳题"后答完自动前进；错题集模式强制手动跳题（始终停留查看解析）
     if (state.quizMode === 'practice') {
-      if (state.practiceAutoNext) { setTimeout(nextQuestion, 0); }
+      if (state.practiceAutoNext) { setTimeout(function(){ nextQuestion(true); }, 0); }
       return;
     }
     if (state.quizMode === 'wrongset') {
@@ -2333,6 +2342,7 @@ function submitAnswer() {
     }
   }
   state.submitted = true;
+  state.lastPracticeIdx = state.currentIdx;
   // 错题集练习模式：答对自动移出错题集（如果刚答的是对的）
   if (q && state.quizMode === 'wrongset') {
     const userAns = state.answers[q.id] || [];
@@ -2344,7 +2354,7 @@ function submitAnswer() {
   render();
   // v10.7: 练习模式多选题——开启"自动跳题"后答完自动前进；错题集强制手动跳题
   if (state.quizMode === 'practice' && state.practiceAutoNext) {
-    setTimeout(nextQuestion, 0);
+    setTimeout(function(){ nextQuestion(true); }, 0);
   }
 }
 function prevQuestion() {
@@ -2354,17 +2364,19 @@ function prevQuestion() {
       const prevQ = state.questions[state.currentIdx];
       state.submitted = !!(state.answers[prevQ.id] && state.answers[prevQ.id].length > 0 && state.submittedSet && state.submittedSet[prevQ.id]);
     }
+    state.lastPracticeIdx = state.currentIdx;
     savePracticeProgress(state.practiceType);
     render();
   }
 }
-function nextQuestion() {
+function nextQuestion(fromAuto) {
   if (state.currentIdx < state.questions.length - 1) {
     state.currentIdx++;
     if (state.quizMode === 'practice' || state.quizMode === 'wrongset') {
       const nextQ = state.questions[state.currentIdx];
       state.submitted = !!(state.submittedSet && state.submittedSet[nextQ.id]);
     }
+    if (!fromAuto) state.lastPracticeIdx = state.currentIdx;  // 手动点"下一题"：当前题成为有效进度点
     savePracticeProgress(state.practiceType);
     render();
   } else {
