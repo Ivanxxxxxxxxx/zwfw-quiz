@@ -2252,6 +2252,7 @@ function renderQuiz(main) {
   html += '</div>';
   main.innerHTML = html;
 }
+var pendingAutoTimer = null;  // v10.17: 考试自动跳题的待触发计时器，防止重复前进
 function selectOption(key, isMulti) {
   const q = state.questions[state.currentIdx];
   if (!q) return;
@@ -2296,24 +2297,34 @@ function selectOption(key, isMulti) {
     }
   }
   // v5.2: 刷题/错题集/考试模式下的单选/判断——点完选项立即跳下一题
-  // 多选/不定项跳过此分支（继续走原 render() 等用户点"提交答案"）
+  // 多选/不定项跳过此分支（继续走原 render() 等用户点"下一题"）
   // 快答模式跳过（前面 if (isRush) 已 return）
-  if (!isMulti && (state.quizMode === 'practice' || state.quizMode === 'wrongset')) {
+  if (!isMulti && (state.quizMode === 'practice' || state.quizMode === 'wrongset' || state.quizMode === 'exam')) {
     if (state.quizMode === 'practice' || state.quizMode === 'wrongset') {
       state.submitted = true;
       state.submittedSet[q.id] = true;
       state.lastPracticeIdx = state.currentIdx;
       savePracticeProgress(state.practiceType);
+      // 答错加入错题集（幂等）
+      if (!isAnswerCorrect(q, userAns)) addToWrongSet(q.id);
     }
-    // 答错加入错题集（考试/错题集模式上面已加；刷题模式首次加；幂等）
-    if (!isAnswerCorrect(q, userAns)) {
-      addToWrongSet(q.id);
-    }
-    render();  // 先渲染：让用户看到选项高亮 + 答案对错
-    // v6.8: 考试模式手动跳题时不调 nextQuestion，让用户点"下一题"按钮
-    if (state.quizMode === 'exam' && state.examAutoNext === false) {
+    // 考试模式：选中→高亮；自动跳题则确认并记录后自动前进，手动跳题则等用户点"下一题"
+    if (state.quizMode === 'exam') {
+      render();  // 显示选项高亮
+      if (state.examAutoNext === false) {
+        // 手动跳题：保留原行为——不记录、等用户点"下一题"再确认（v10.15 逻辑）
+        if (pendingAutoTimer) { clearTimeout(pendingAutoTimer); pendingAutoTimer = null; }
+        return;
+      }
+      examRecordCurrent();  // 自动跳题：选中即确认并记录答案（答错加错题集）
+      if (pendingAutoTimer) clearTimeout(pendingAutoTimer);
+      pendingAutoTimer = setTimeout(function() {
+        pendingAutoTimer = null;
+        nextQuestion();  // 末题：自动 submitExam
+      }, 350);
       return;
     }
+    render();  // 先渲染：让用户看到选项高亮 + 答案对错
     // v10.7: 练习模式——开启"自动跳题"后答完自动前进；错题集模式强制手动跳题（始终停留查看解析）
     if (state.quizMode === 'practice') {
       if (state.practiceAutoNext) { setTimeout(function(){ nextQuestion(true); }, 0); }
@@ -2401,10 +2412,13 @@ function examRecordCurrent() {
   }
 }
 function examConfirmAndNext() {
+  if (pendingAutoTimer) { clearTimeout(pendingAutoTimer); pendingAutoTimer = null; } // 取消待触发的自动跳题，避免双击重复前进
+  const idx0 = state.currentIdx;
   examRecordCurrent();
   const q = state.questions[state.currentIdx];
   if (!q) return;
   if ((state.answers[q.id] || []).length === 0) return; // 未作答不允许前进
+  if (state.currentIdx !== idx0) return; // 已被自动跳题推进，避免重复前进
   nextQuestion();
 }
 // v10.15: 练习多选——"下一题"即提交当前答案并前进（选完点下一题确认）
