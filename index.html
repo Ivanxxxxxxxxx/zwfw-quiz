@@ -1394,7 +1394,13 @@ function startPractice(type) {
       if (savedSubmittedSet[qid]) useSubmittedSet[qid] = savedSubmittedSet[qid];
     }
     if (allValid) {
-      resumeIdx = Math.max(0, Math.min(saved.currentIdx || 0, questions.length - 1));
+      // v10.15: 恢复点取"最后浏览"与"已答最远"的较大值，避免回看/翻到早期题目后退出导致进度倒退
+      let maxAns = -1;
+      for (let i = 0; i < saved.qids.length; i++) {
+        if (savedSubmittedSet[saved.qids[i]]) maxAns = i;
+      }
+      resumeIdx = Math.max(saved.currentIdx || 0, maxAns);
+      resumeIdx = Math.max(0, Math.min(resumeIdx, questions.length - 1));
     } else {
       useAnswers = {};
       useSubmittedSet = {};
@@ -2213,36 +2219,28 @@ function renderQuiz(main) {
       html += '<button class="btn btn-primary" onclick="bxRushSubmitMulti()"' + (userAns.length === 0 ? ' disabled' : '') + '>提交答案</button>';
     }
   } else if (isExam) {
-    // 考试模式：交卷按钮始终可点
+    // 考试模式：选中不锁定，点"下一题/提交试卷"即确认当前答案并前进（v10.15）
     html += '<button class="btn btn-secondary" onclick="prevQuestion()"' + (state.currentIdx === 0 ? ' disabled' : '') + '>‹ 上一题</button>';
     html += '<button class="btn btn-warning" onclick="trySubmitExam()">交卷</button>';
-    if (!examThisLocked && isMulti) {
-      html += '<button class="btn btn-primary" onclick="confirmMultiAnswer()"' + (userAns.length === 0 ? ' disabled' : '') + '>确认答案</button>';
+    const last = (!state.examUnlimited) && state.currentIdx >= state.questions.length - 1;
+    let label, disabled = (userAns.length === 0);
+    if (last) {
+      const lockedCount = Object.keys(state.examLocked).filter(function(k) { return state.examLocked[k]; }).length;
+      label = (!disabled && lockedCount >= state.questions.length) ? '提交试卷' : (disabled ? '请先作答' : '完成并提交');
     } else {
-      const last = (!state.examUnlimited) && state.currentIdx >= state.questions.length - 1;
-      let label, disabled = false;
-      if (last) {
-        if (examThisLocked) {
-          const lockedCount = Object.keys(state.examLocked).filter(function(k) { return state.examLocked[k]; }).length;
-          label = lockedCount >= state.questions.length ? '提交试卷' : '完成并提交';
-        } else {
-          label = '请先作答';
-          disabled = true;
-        }
-      } else {
-        label = '下一题 ›';
-      }
-      html += '<button class="btn btn-primary" onclick="nextQuestion()"' + (disabled ? ' disabled' : '') + '>' + label + '</button>';
+      label = '下一题 ›';
     }
+    html += '<button class="btn btn-primary" onclick="examConfirmAndNext()"' + (disabled ? ' disabled' : '') + '>' + label + '</button>';
   } else {
-    // 刷题 / 错题集模式
+    // 刷题 / 错题集模式：选完点"下一题"即确认并前进（v10.15）
     html += '<button class="btn btn-secondary" onclick="prevQuestion()"' + (state.currentIdx === 0 ? ' disabled' : '') + '>‹ 上一题</button>';
     if (state.quizMode === 'practice') {
       // v9.1: 练习模式手动重置当前题型进度
       html += '<button class="btn btn-danger" onclick="resetPracticeProgress()" title="重置当前题型练习进度（从第 1 题重新开始）">🔄 重置进度</button>';
     }
     if (!state.submitted) {
-      html += '<button class="btn btn-primary" onclick="submitAnswer()"' + (userAns.length === 0 ? ' disabled' : '') + '>提交答案</button>';
+      const dis = (userAns.length === 0) ? ' disabled' : '';
+      html += '<button class="btn btn-primary" onclick="submitAndNext()"' + dis + '>下一题 ›</button>';
     } else {
       const last = state.currentIdx >= state.questions.length - 1;
       html += '<button class="btn btn-primary" onclick="nextQuestion()">' + (last ? '完成练习' : '下一题 ›') + '</button>';
@@ -2258,7 +2256,8 @@ function selectOption(key, isMulti) {
   const isWrongset = state.quizMode === 'wrongset';
   const isRush = state.quizMode === 'budingxiang_rush';
   // 锁住判断：刷题已提交 或 考试本题已锁
-  const locked = (!isExam && state.submitted) || (isExam && state.examLocked[q.id]);
+  // v10.15: 考试模式不锁定选项（允许随时修改答案）；刷题/错题集已提交才锁定
+  const locked = (!isExam && state.submitted);
   if (locked) return;
   let userAns = state.answers[q.id] || [];
   if (isMulti) {
@@ -2284,14 +2283,6 @@ function selectOption(key, isMulti) {
     bxRushNextOrFinish();
     return;
   }
-  // 考试模式下，单项题/判断题选完立即锁
-  if (isExam && !isMulti) {
-    state.examLocked[q.id] = true;
-    // 答错则加入错题集
-    if (!isAnswerCorrect(q, userAns)) {
-      addToWrongSet(q.id);
-    }
-  }
   // 错题集单选/判断模式（未锁）：答对自动移出错题集，答错保留
   if (isWrongset && !isMulti) {
     if (isAnswerCorrect(q, userAns)) {
@@ -2304,7 +2295,7 @@ function selectOption(key, isMulti) {
   // v5.2: 刷题/错题集/考试模式下的单选/判断——点完选项立即跳下一题
   // 多选/不定项跳过此分支（继续走原 render() 等用户点"提交答案"）
   // 快答模式跳过（前面 if (isRush) 已 return）
-  if (!isMulti && (state.quizMode === 'practice' || state.quizMode === 'wrongset' || state.quizMode === 'exam')) {
+  if (!isMulti && (state.quizMode === 'practice' || state.quizMode === 'wrongset')) {
     if (state.quizMode === 'practice' || state.quizMode === 'wrongset') {
       state.submitted = true;
       state.submittedSet[q.id] = true;
@@ -2392,6 +2383,34 @@ function submitAnswer() {
   // v10.7: 练习模式多选题——开启"自动跳题"后答完自动前进；错题集强制手动跳题
   if (state.quizMode === 'practice' && state.practiceAutoNext) {
     setTimeout(function(){ nextQuestion(true); }, 0);
+  }
+}
+
+// v10.15: 考试模式——选中不锁定，点"下一题/提交试卷"即记录当前答案并前进
+function examRecordCurrent() {
+  const q = state.questions[state.currentIdx];
+  if (!q) return;
+  const userAns = state.answers[q.id] || [];
+  if (userAns.length === 0) return;
+  if (!state.examLocked[q.id]) {
+    state.examLocked[q.id] = true;
+    if (!isAnswerCorrect(q, userAns)) addToWrongSet(q.id);
+  }
+}
+function examConfirmAndNext() {
+  examRecordCurrent();
+  const q = state.questions[state.currentIdx];
+  if (!q) return;
+  if ((state.answers[q.id] || []).length === 0) return; // 未作答不允许前进
+  nextQuestion();
+}
+// v10.15: 练习多选——"下一题"即提交当前答案并前进（选完点下一题确认）
+function submitAndNext() {
+  if (!state.submitted) {
+    submitAnswer(); // 记录+显示答案+保存（手动模式不自动前进；自动跳题模式会 setTimeout 前进）
+  }
+  if (!state.practiceAutoNext) {
+    nextQuestion();
   }
 }
 function prevQuestion() {
@@ -2738,7 +2757,8 @@ function confirmClearWrongSet(type, count) {
 }
 
 function trySubmitExam() {
-  // 考试模式交卷按钮
+  // v10.15: 交卷前先记录当前题答案（若已选）
+  examRecordCurrent();
   submitExam();
 }
 function submitExam() {
