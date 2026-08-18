@@ -1399,8 +1399,9 @@ function startPractice(type) {
   state.questions = questions;
   state.currentIdx = resumeIdx;
   state.answers = useAnswers;
-  state.submitted = false;
   state.submittedSet = useSubmittedSet;
+  const _resumeQ = questions[resumeIdx];
+  state.submitted = !!(resumeIdx >= 0 && _resumeQ && useSubmittedSet && useSubmittedSet[_resumeQ.id]);
   state.practiceType = type;
   state.quizMode = 'practice';
   state.startTime = Date.now();
@@ -1557,8 +1558,9 @@ function startPracticeAt(type, startNum) {
   state.questions = questions;
   state.currentIdx = resumeIdx;
   state.answers = useAnswers;
-  state.submitted = false;
   state.submittedSet = useSubmittedSet;
+  const _resumeQ = questions[resumeIdx];
+  state.submitted = !!(resumeIdx >= 0 && _resumeQ && useSubmittedSet && useSubmittedSet[_resumeQ.id]);
   state.practiceType = type;
   state.quizMode = 'practice';
   state.startTime = Date.now();
