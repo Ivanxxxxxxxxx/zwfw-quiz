@@ -2321,7 +2321,7 @@ function selectOption(key, isMulti) {
       pendingAutoTimer = setTimeout(function() {
         pendingAutoTimer = null;
         nextQuestion();  // 末题：自动 submitExam
-      }, 150);
+      }, 0);
       return;
     }
     render();  // 先渲染：让用户看到选项高亮 + 答案对错
