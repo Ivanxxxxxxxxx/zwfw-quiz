@@ -144,6 +144,7 @@ html[data-theme="dark"] {
 .question-text { font-size: 16px; line-height: 1.7; color: #1f2937; margin-bottom: 18px; word-break: break-word; }
 .options-list { display: flex; flex-direction: column; gap: 10px; }
 @media (min-width: 768px) { .options-list { display: grid; grid-template-columns: 1fr 1fr; } }
+.options-list.force-single { display: flex !important; flex-direction: column; } /* v10.16: 强制单列，覆盖桌面双列 */
 .option-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1.5px solid #e5e7eb; border-radius: 10px; transition: all 0.2s; background: #fff; }
 .option-item:hover { background: #fff; }
 .option-item.selected { border-color: #3b82f6; background: #eff6ff; }
@@ -591,6 +592,7 @@ var state = {
   examShuffle: (function() { try { const v = localStorage.getItem('zwfw_examShuffle'); return v === null ? false : (v === 'true'); } catch (e) { return false; } })(), // v9.4: 默认顺序（不打乱选项）
   examShowAnswer: (function() { try { const v = localStorage.getItem('zwfw_examShowAnswer'); return v === null ? true : (v === 'true'); } catch (e) { return true; } })(), // v10.12: 考试模式锁定题目后是否高亮显示正确答案（绿/红+✓/✗）；默认显示，可关闭以模拟真实考试
   examResultSingleCol: (function() { try { const v = localStorage.getItem('zwfw_examResultSingleCol'); return v === null ? false : (v === 'true'); } catch (e) { return false; } })(), // v10.12: 考试结果"答题详情"是否单列（上下）排列；默认双列（左右）
+  optionsSingleCol: (function() { try { const v = localStorage.getItem('zwfw_optionsSingleCol'); return v === null ? true : (v === 'true'); } catch (e) { return true; } })(), // v10.16: 答题选项是否强制单列（上下）；默认单列，比赛阅读更舒适；关闭则桌面端恢复双列
   examMixMode: (function() { try { const v = localStorage.getItem('zwfw_examMixMode'); return v || 'standard'; } catch (e) { return 'standard'; } })(), // v9.3: 题型组合 standard|custom|random
   examCustom: (function() { try { const v = JSON.parse(localStorage.getItem('zwfw_examCustom') || 'null'); if (v && typeof v === 'object') return v; } catch (e) {} return { panduan: 20, danxuan: 60, duoxuan: 20, budingxiang: 0 }; })(), // v9.3: 自定义各题型题数
   examRandomTotal: (function() { try { const v = parseInt(localStorage.getItem('zwfw_examRandomTotal'), 10); if (!isNaN(v) && v > 0) return v; } catch (e) {} return 100; })(), // v9.3: 全随机固定模式总数
@@ -2133,6 +2135,7 @@ function renderQuiz(main) {
     '<span class="progress">' + progress + '</span>' +
     '<span class="mode-badge ' + modeCls + '">' + modeLabel + '</span>' +
     '<span class="q-num">已答 ' + answeredCount + ' 题</span>' +
+    '<button class="layout-toggle-btn' + (state.optionsSingleCol ? ' active' : '') + '" onclick="toggleOptionsLayout()" title="切换答题选项排版：单列 / 双列">' + (state.optionsSingleCol ? '选项：单列 ↓' : '选项：双列 ↔') + '</button>' +
   '</div>' +
   '<div class="question-card">' +
     '<div class="question-meta">' +
@@ -2140,7 +2143,7 @@ function renderQuiz(main) {
       '<span class="q-num">第 ' + q.id + ' 题' + (locked ? ' · 已锁定' : ' · 作答中') + '</span>' +
     '</div>' +
     '<div class="question-text">' + escapeHtml(q.question) + '</div>' +
-    '<div class="options-list">';
+    '<div class="options-list' + (state.optionsSingleCol ? ' force-single' : '') + '">';
   for (let i = 0; i < q.options.length; i++) {
     const opt = q.options[i];
     const isUserAns = userAns.indexOf(opt.key) !== -1;
@@ -2899,6 +2902,12 @@ function toggleExamResultLayout() {
   state.examResultSingleCol = !state.examResultSingleCol;
   try { localStorage.setItem('zwfw_examResultSingleCol', JSON.stringify(state.examResultSingleCol)); } catch (e) {}
   renderExamResult(document.getElementById('mainContent'));
+}
+// v10.16: 答题选项布局切换（单列 ↔ 双列），作用于答题时的选项，不在结果页
+function toggleOptionsLayout() {
+  state.optionsSingleCol = !state.optionsSingleCol;
+  try { localStorage.setItem('zwfw_optionsSingleCol', state.optionsSingleCol ? 'true' : 'false'); } catch (e) {}
+  render();
 }
 function escapeHtml(s) {
   if (s == null) return '';
