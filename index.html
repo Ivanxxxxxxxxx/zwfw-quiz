@@ -1925,13 +1925,9 @@ function startExamTimer() {
     else if (sec <= 60) wrap.classList.add('warn');
     if (remain <= 0) {
       stopExamTimer();
-      // v5.4: alert 文案根据 examTimeLimit 动态拼（不限时 0 不会触发 timer，所以这里只处理 180/300）
-    // v6.5: timeLimit 可能是非整分钟数（200 秒），需要动态算 X 分 Y 秒
-    const m2 = Math.floor(state.examTimeLimit / 60);
-    const s2 = state.examTimeLimit % 60;
-    const human2 = s2 === 0 ? (m2 + ' 分钟') : (m2 + ' 分 ' + s2 + ' 秒');
-    showAlert('⏰ ' + human2 + '到，自动交卷！未作答题目将计 0 分。');
-      submitExam();
+      // v10.23: 时间到直接自动交卷（submitExam(true) 不弹确认框/遮罩），不再弹"时间到"全屏 alert，
+      // 避免遮罩盖住选项导致"最后时刻点不到答案、被迫跳结果页直接显示答案"
+      submitExam(true);
     }
   }, 200);
 }
@@ -2778,17 +2774,14 @@ function trySubmitExam() {
   examRecordCurrent();
   submitExam();
 }
-function submitExam() {
-  stopExamTimer();
+function submitExam(isAuto) {
   const isUnlimited = state.examUnlimited;
   const presented = isUnlimited ? (state.currentIdx + 1) : state.questions.length;
   const answered = Object.keys(state.answers).filter(function(k) { return (state.answers[k] || []).length > 0; }).length;
   const unanswered = presented - answered;
-  let confirmMsg = '确定要交卷吗？\n本次共呈现 ' + presented + ' 题，已答 ' + answered + ' 题';
-  if (unanswered > 0) {
-    confirmMsg += '\n还有 ' + unanswered + ' 题未作答，将计 0 分';
-  }
-  showConfirm(confirmMsg, function() {
+  // v10.23: 结算逻辑抽成 finalize；isAuto=true（时间到自动交卷）直接结算不弹确认框，避免遮罩盖住选项
+  function finalize() {
+    stopExamTimer();
     // 仅统计已呈现的题目（无上限模式池远大于实际作答数）
     const served = isUnlimited ? state.questions.slice(0, presented) : state.questions;
     for (let i = 0; i < served.length; i++) {
@@ -2814,11 +2807,21 @@ function submitExam() {
       time: Date.now() - state.startTime,
       details: result,
       unlimited: isUnlimited,
-      passLine: isUnlimited ? 0 : Math.round(presented * 0.6)
+      passLine: isUnlimited ? 0 : Math.round(presented * 0.6),
+      auto: !!isAuto  // v10.23: 标记是否"时间到自动交卷"，结果页据此显示提示
     };
     saveExamRecord(state.examResult);
     navigate('exam-result');
-  });
+  }
+  if (isAuto) {
+    finalize();
+    return;
+  }
+  let confirmMsg = '确定要交卷吗？\n本次共呈现 ' + presented + ' 题，已答 ' + answered + ' 题';
+  if (unanswered > 0) {
+    confirmMsg += '\n还有 ' + unanswered + ' 题未作答，将计 0 分';
+  }
+  showConfirm(confirmMsg, finalize);
 }
 function renderExamResult(main) {
   const isDesktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches; // v10.14: 仅桌面显示"双列/单列"切换
@@ -2849,6 +2852,10 @@ function renderExamResult(main) {
         '<div class="result-stat total"><div class="num">' + formatTime(r.time) + '</div><div class="lbl">用时</div></div>' +
       '</div>' +
     '</div>';
+  }
+  // v10.23: 时间到自动交卷时给出明确提示（不再靠考前弹窗糊脸）
+  if (r.auto) {
+    html += '<div style="background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:14px;">⏰ 时间到，已自动交卷</div>';
   }
   html += '<div class="result-actions">' +
     '<button class="btn btn-primary" onclick="startExam(state.examTimeLimit)">再来一次</button>' +
