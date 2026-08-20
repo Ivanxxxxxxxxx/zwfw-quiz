@@ -145,6 +145,11 @@ html[data-theme="dark"] {
 .options-list { display: flex; flex-direction: column; gap: 10px; }
 @media (min-width: 768px) { .options-list { display: grid; grid-template-columns: 1fr 1fr; } }
 .options-list.force-single { display: flex !important; flex-direction: column; } /* v10.16: 强制单列，覆盖桌面双列 */
+/* v10.24: 单列时压缩选项高度，让题目+选项+按钮尽量一屏放下，减少滚动 */
+.options-list.force-single { gap: 6px; }
+.options-list.force-single .option-item { padding: 8px 12px; }
+.options-list.force-single .option-key { width: 22px; height: 22px; font-size: 12px; }
+.options-list.force-single .option-text { font-size: 14px; line-height: 1.45; }
 .option-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1.5px solid #e5e7eb; border-radius: 10px; transition: all 0.2s; background: #fff; }
 .option-item:hover { background: #fff; }
 .option-item.selected { border-color: #3b82f6; background: #eff6ff; }
