@@ -183,15 +183,19 @@ html[data-theme="dark"] .quiz-actions { background: linear-gradient(transparent,
    改回普通文档流 + 压缩题干/选项尺寸（典型题目一屏装下）；超长题仅「选项区」内部滚动兜底，abcd键与按钮在题卡外常驻可见 */
 html.quiz-active, body.quiz-active { overflow: visible; }
 .app-main.quiz-active { display: block; max-width: 800px; padding: 8px; }
-.quiz-screen { display: block; }
+/* v10.32: 固定底栏方案——ABCD 键 + 导航按钮合并进 quiz-footer，永远钉在屏幕底部；
+   整页正常滚动，底栏固定，不再依赖 vh/dvh 高度链，彻底避免被裁切/随题跳动 */
+.quiz-screen { display: block; padding-bottom: 150px; box-sizing: border-box; }
 .quiz-screen > .exam-timer-bar,
 .quiz-screen > .bx-timer-bar { margin: 8px 12px 0; }
 .quiz-screen > .quiz-bar { margin: 8px 12px 0; }
-.quiz-screen > .question-card { margin: 8px 12px; max-height: 68vh; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-.answer-keys { display: flex; gap: 8px; margin-top: 12px; justify-content: center; }
-.quiz-screen > .answer-keys { flex: 0 0 auto; margin: 8px 12px 0; padding-top: 4px; }
-.quiz-screen > .quiz-actions { position: static; left: auto; right: auto; bottom: auto; width: auto; max-width: none; margin: 12px; gap: 10px; background: transparent; border-top: none; box-shadow: none; padding: 0; flex-wrap: wrap; }
-html[data-theme="dark"] .quiz-screen > .quiz-actions { background: transparent; }
+.quiz-screen > .question-card { margin: 8px 12px; }
+.answer-keys { display: flex; gap: 8px; justify-content: center; }
+.quiz-footer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: #f5f7fa; border-top: 1px solid #e5e7eb; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); box-sizing: border-box; }
+html[data-theme="dark"] .quiz-footer { background: #111827; border-top-color: #374151; }
+.quiz-footer .answer-keys { margin: 0 0 8px; }
+.quiz-footer .quiz-actions { position: static; left: auto; right: auto; bottom: auto; width: 100%; max-width: 800px; margin: 0 auto; gap: 10px; background: transparent; border-top: none; box-shadow: none; padding: 0; flex-wrap: wrap; }
+html[data-theme="dark"] .quiz-footer .quiz-actions { background: transparent; }
 /* v10.29: 全随机"确定"按钮的点击反馈——按下有缩放、点击后变绿显示「已确认 ✓」 */
 .exam-time-opt:active { transform: translateY(1px) scale(0.97); }
 #examRandomConfirmBtn.confirmed { background: #16a34a !important; color: #fff !important; border-color: #16a34a !important; }
@@ -2260,7 +2264,8 @@ function renderQuiz(main) {
     }
   }
   html += '</div>';
-  // v10.29: ABCD 键作为 quiz-screen 的常驻元素（题目卡与底部按钮之间），永远在屏幕上可见，不被长题干挤出
+  // v10.32: ABCD 键 + 导航按钮合并进固定底栏 quiz-footer，永远钉在屏幕底部，不随题目跳动
+  html += '<div class="quiz-footer">';
   if (btnStyle === 'abcd') {
   const sortedKeys = q.options.map(function(o) { return o.key; }).sort();
   html += '<div class="answer-keys">';
@@ -2319,6 +2324,7 @@ function renderQuiz(main) {
     }
   }
   html += '</div>'; // 关闭 quiz-actions
+  html += '</div>'; // 关闭 quiz-footer
   html += '</div>'; // 关闭 quiz-screen
   main.innerHTML = html;
 }
