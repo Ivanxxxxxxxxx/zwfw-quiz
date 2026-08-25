@@ -179,6 +179,16 @@ html[data-theme="dark"] {
 .quiz-actions { display: flex; gap: 10px; position: fixed; left: 0; right: 0; bottom: 0; width: 100%; max-width: 800px; margin: 0 auto; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(transparent, #f5f7fa 40%); z-index: 30; box-sizing: border-box; }
 html[data-theme="dark"] .quiz-actions { background: linear-gradient(transparent, #111827 40%); }
 @media (min-width: 1024px) { .quiz-actions { max-width: 1040px; } }
+/* v10.26: 答题界面锁屏——整页不滚动，仅中间题目卡内部滚动，底部按钮常驻可见 */
+body.quiz-active { height: 100vh; overflow: hidden; }
+.app-main.quiz-active { padding: 0; max-width: none; overflow: hidden; }
+.quiz-screen { display: flex; flex-direction: column; height: 100%; min-height: 0; box-sizing: border-box; }
+.quiz-screen > .exam-timer-bar,
+.quiz-screen > .bx-timer-bar { flex: 0 0 auto; margin: 12px 12px 0; }
+.quiz-screen > .quiz-bar { flex: 0 0 auto; margin: 12px 12px 0; }
+.quiz-screen > .question-card { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; margin: 12px; }
+.quiz-screen > .quiz-actions { flex: 0 0 auto; position: static; left: auto; right: auto; bottom: auto; width: 100%; max-width: none; margin: 0; background: #f5f7fa; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid #e5e7eb; box-shadow: 0 -2px 8px rgba(0,0,0,0.04); }
+html[data-theme="dark"] .quiz-screen > .quiz-actions { background: #111827; border-top-color: #374151; }
 .answer-keys { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-start; }
 .answer-key-btn { width: 48px; height: 48px; border-radius: 50%; border: 2px solid #d1d5db; background: #f9fafb; color: #374151; font-size: 18px; font-weight: 700; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
 .answer-key-btn:hover { border-color: #3b82f6; background: #eff6ff; color: #1d4ed8; }
@@ -915,6 +925,10 @@ function render() {
   const ao = document.getElementById('alertOverlay');
   if (ao && ao.parentNode) ao.parentNode.removeChild(ao);
   const main = $('#mainContent');
+  // v10.26: 答题视图锁屏——整页不滚动，仅中间题目卡内部滚动，底部按钮常驻
+  const isQuizView = state.view === 'quiz';
+  document.body.classList.toggle('quiz-active', isQuizView);
+  main.classList.toggle('quiz-active', isQuizView);
   const backBtn = $('#backBtn');
   const headerAction = $('#headerAction');
   const title = $('#appTitle');
@@ -2163,7 +2177,7 @@ function renderQuiz(main) {
     examTimerBar = '<div class="exam-timer-bar ' + remainCls + '" id="examTimerWrap"><span class="exam-timer-label">⏱ 剩余时间</span><div class="exam-timer-track"><div class="exam-timer-fill" id="examTimerBar"></div></div><span class="exam-timer-text" id="examTimerText">' + mm + ':' + ss + '</span><span id="examTimerSR" class="sr-only" aria-live="polite"></span></div>';
   }
   // v4.9: 修复 v4.7 遗留 bug — bxTimerBar 之前没拼到 html，现在拼上
-  let html = bxTimerBar + examTimerBar + '<div class="quiz-bar">' +
+  let html = '<div class="quiz-screen">' + bxTimerBar + examTimerBar + '<div class="quiz-bar">' +
     '<span class="progress">' + progress + '</span>' +
     '<span class="mode-badge ' + modeCls + '">' + modeLabel + '</span>' +
     '<span class="q-num">已答 ' + answeredCount + ' 题</span>' +
@@ -2282,7 +2296,8 @@ function renderQuiz(main) {
       html += '<button class="btn btn-primary" onclick="nextQuestion()">' + (last ? '完成练习' : '下一题 ›') + '</button>';
     }
   }
-  html += '</div>';
+  html += '</div>'; // 关闭 quiz-actions
+  html += '</div>'; // 关闭 quiz-screen
   main.innerHTML = html;
 }
 var pendingAutoTimer = null;  // v10.17: 考试自动跳题的待触发计时器，防止重复前进
