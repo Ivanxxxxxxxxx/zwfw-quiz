@@ -179,15 +179,17 @@ html[data-theme="dark"] {
 .quiz-actions { display: flex; gap: 10px; position: fixed; left: 0; right: 0; bottom: 0; width: 100%; max-width: 800px; margin: 0 auto; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(transparent, #f5f7fa 40%); z-index: 30; box-sizing: border-box; }
 html[data-theme="dark"] .quiz-actions { background: linear-gradient(transparent, #111827 40%); }
 @media (min-width: 1024px) { .quiz-actions { max-width: 1040px; } }
-/* v10.26: 答题界面锁屏——整页不滚动，仅中间题目卡内部滚动，底部按钮常驻可见 */
-body.quiz-active { height: 100vh; overflow: hidden; }
-.app-main.quiz-active { padding: 0; max-width: none; overflow: hidden; }
-.quiz-screen { display: flex; flex-direction: column; height: 100%; min-height: 0; box-sizing: border-box; }
+/* v10.26: 答题界面锁屏——整页不滚动，仅中间题目卡内部滚动，底部按钮常驻可见
+   v10.28: 改用固定定位 + flex 逐级收口，不再依赖 height:100% 百分比链（移动端 100vh 含地址栏区域会导致收口失败、整页被撑开滚动） */
+html.quiz-active { overflow: hidden; }
+body.quiz-active { position: fixed; top: 0; left: 0; right: 0; height: 100vh; height: 100dvh; overflow: hidden; }
+.app-main.quiz-active { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 0; max-width: none; overflow: hidden; }
+.quiz-screen { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; box-sizing: border-box; }
 .quiz-screen > .exam-timer-bar,
 .quiz-screen > .bx-timer-bar { flex: 0 0 auto; margin: 12px 12px 0; }
 .quiz-screen > .quiz-bar { flex: 0 0 auto; margin: 12px 12px 0; }
-.quiz-screen > .question-card { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; margin: 12px; }
-.quiz-screen > .quiz-actions { flex: 0 0 auto; position: static; left: auto; right: auto; bottom: auto; width: 100%; max-width: none; margin: 0; background: #f5f7fa; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid #e5e7eb; box-shadow: 0 -2px 8px rgba(0,0,0,0.04); }
+.quiz-screen > .question-card { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; margin: 12px; }
+.quiz-screen > .quiz-actions { flex: 0 0 auto; width: 100%; max-width: none; margin: 0; background: #f5f7fa; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid #e5e7eb; box-shadow: 0 -2px 8px rgba(0,0,0,0.04); }
 html[data-theme="dark"] .quiz-screen > .quiz-actions { background: #111827; border-top-color: #374151; }
 .answer-keys { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-start; }
 .answer-key-btn { width: 48px; height: 48px; border-radius: 50%; border: 2px solid #d1d5db; background: #f9fafb; color: #374151; font-size: 18px; font-weight: 700; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
@@ -928,6 +930,7 @@ function render() {
   // v10.26: 答题视图锁屏——整页不滚动，仅中间题目卡内部滚动，底部按钮常驻
   const isQuizView = state.view === 'quiz';
   document.body.classList.toggle('quiz-active', isQuizView);
+  if (document.documentElement) document.documentElement.classList.toggle('quiz-active', isQuizView);
   main.classList.toggle('quiz-active', isQuizView);
   const backBtn = $('#backBtn');
   const headerAction = $('#headerAction');
