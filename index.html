@@ -132,25 +132,25 @@ html[data-theme="dark"] {
 .category-item:hover { background: #eff6ff; transform: translateY(-1px); }
 .category-count { font-size: 22px; font-weight: 700; color: #3b82f6; }
 .category-name { font-size: 13px; color: #6b7280; margin-top: 4px; }
-.quiz-bar { background: #fff; padding: 12px 16px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); font-size: 13px; }
+.quiz-bar { background: #fff; padding: 8px 12px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); font-size: 12px; }
 .quiz-bar .progress { color: #3b82f6; font-weight: 600; }
 .quiz-bar .mode-badge { background: #dbeafe; color: #2563eb; padding: 3px 10px; border-radius: 10px; font-size: 12px; }
 .quiz-bar .mode-badge.exam { background: #fef3c7; color: #d97706; }
 .quiz-bar .mode-badge.wrongset { background: #fee2e2; color: #dc2626; }
-.question-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 12px; }
+.question-card { background: #fff; border-radius: 12px; padding: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 12px; }
 .question-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
 .q-type { display: inline-block; padding: 2px 8px; background: #eff6ff; color: #2563eb; border-radius: 4px; font-size: 12px; font-weight: 500; }
 .q-num { font-size: 13px; color: #6b7280; }
-.question-text { font-size: 16px; line-height: 1.7; color: #1f2937; margin-bottom: 18px; word-break: break-word; }
-.options-list { display: flex; flex-direction: column; gap: 10px; }
+.question-text { font-size: 15px; line-height: 1.55; color: #1f2937; margin-bottom: 12px; word-break: break-word; }
+.options-list { display: flex; flex-direction: column; gap: 8px; }
 @media (min-width: 768px) { .options-list { display: grid; grid-template-columns: 1fr 1fr; } }
 .options-list.force-single { display: flex !important; flex-direction: column; } /* v10.16: 强制单列，覆盖桌面双列 */
 /* v10.24: 单列时压缩选项高度，让题目+选项+按钮尽量一屏放下，减少滚动 */
 .options-list.force-single { gap: 6px; }
-.options-list.force-single .option-item { padding: 8px 12px; }
-.options-list.force-single .option-key { width: 22px; height: 22px; font-size: 12px; }
-.options-list.force-single .option-text { font-size: 14px; line-height: 1.45; }
-.option-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1.5px solid #e5e7eb; border-radius: 10px; transition: all 0.2s; background: #fff; }
+.options-list.force-single .option-item { padding: 7px 10px; }
+.options-list.force-single .option-key { width: 20px; height: 20px; font-size: 11px; }
+.options-list.force-single .option-text { font-size: 13px; line-height: 1.4; }
+.option-item { display: flex; align-items: flex-start; gap: 8px; padding: 9px 12px; border: 1.5px solid #e5e7eb; border-radius: 10px; transition: all 0.2s; background: #fff; }
 .option-item:hover { background: #fff; }
 .option-item.selected { border-color: #3b82f6; background: #eff6ff; }
 .option-item.correct { border-color: #16a34a; background: #dcfce7; }
@@ -162,11 +162,11 @@ html[data-theme="dark"] {
 .option-item:not(.locked):active { background: #f0f7ff; }
 .filter-chip:active { transform: scale(0.97); }
 .answer-key-btn:active { transform: scale(0.95); }
-.option-key { width: 24px; height: 24px; border-radius: 50%; background: #f3f4f6; color: #4b5563; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex-shrink: 0; margin-top: 1px; }
+.option-key { width: 22px; height: 22px; border-radius: 50%; background: #f3f4f6; color: #4b5563; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; margin-top: 1px; }
 .option-item.selected .option-key { background: #3b82f6; color: #fff; }
 .option-item.correct .option-key { background: #16a34a; color: #fff; }
 .option-item.wrong .option-key { background: #dc2626; color: #fff; }
-.option-text { flex: 1; font-size: 15px; line-height: 1.6; color: #1f2937; word-break: break-word; }
+.option-text { flex: 1; font-size: 14px; line-height: 1.45; color: #1f2937; word-break: break-word; }
 .option-mark { color: #16a34a; font-weight: 700; }
 .option-mark.wrong { color: #dc2626; }
 .answer-box { background: #f0fdf4; border-left: 3px solid #16a34a; padding: 12px 14px; border-radius: 6px; margin-top: 14px; font-size: 14px; line-height: 1.7; }
@@ -179,22 +179,19 @@ html[data-theme="dark"] {
 .quiz-actions { display: flex; gap: 10px; position: fixed; left: 0; right: 0; bottom: 0; width: 100%; max-width: 800px; margin: 0 auto; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(transparent, #f5f7fa 40%); z-index: 30; box-sizing: border-box; }
 html[data-theme="dark"] .quiz-actions { background: linear-gradient(transparent, #111827 40%); }
 @media (min-width: 1024px) { .quiz-actions { max-width: 1040px; } }
-/* v10.26: 答题界面锁屏——整页不滚动，仅中间题目卡内部滚动，底部按钮常驻可见
-   v10.28: 改用固定定位 + flex 逐级收口，不再依赖 height:100% 百分比链（移动端 100vh 含地址栏区域会导致收口失败、整页被撑开滚动） */
-html.quiz-active { overflow: hidden; }
-/* v10.30: 用 top/right/bottom/left:0 让 body 精确等于真实视口，彻底不依赖 100vh/100dvh（移动端地址栏、iframe 预览里 100vh 比可见区高，会把 flex 链撑高、abcd键被裁切看不见） */
-body.quiz-active { position: fixed; top: 0; left: 0; right: 0; bottom: 0; min-height: 0; overflow: hidden; }
-.app-main.quiz-active { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 0; max-width: none; overflow: hidden; }
-.quiz-screen { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; box-sizing: border-box; }
+/* v10.31: 废弃 v10.26+ 的 viewport 固定锁屏——移动端/iframe 下 100vh≠真实可见区、flex 高度链脆弱，导致 abcd 键被裁切看不见。
+   改回普通文档流 + 压缩题干/选项尺寸（典型题目一屏装下）；超长题仅「选项区」内部滚动兜底，abcd键与按钮在题卡外常驻可见 */
+html.quiz-active, body.quiz-active { overflow: visible; }
+.app-main.quiz-active { display: block; max-width: 800px; padding: 8px; }
+.quiz-screen { display: block; }
 .quiz-screen > .exam-timer-bar,
-.quiz-screen > .bx-timer-bar { flex: 0 0 auto; margin: 12px 12px 0; }
-.quiz-screen > .quiz-bar { flex: 0 0 auto; margin: 12px 12px 0; }
-.quiz-screen > .question-card { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; margin: 12px; }
-.quiz-screen > .quiz-actions { flex: 0 0 auto; width: 100%; max-width: none; margin: 0; background: #f5f7fa; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid #e5e7eb; box-shadow: 0 -2px 8px rgba(0,0,0,0.04); }
-html[data-theme="dark"] .quiz-screen > .quiz-actions { background: #111827; border-top-color: #374151; }
-.answer-keys { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-start; }
-/* v10.29: ABCD 键作为答题屏常驻元素（题目卡与底部按钮之间），永远可见，不随题干长短跳动 */
-.quiz-screen > .answer-keys { flex: 0 0 auto; margin: 8px 12px 0; justify-content: center; padding-top: 4px; }
+.quiz-screen > .bx-timer-bar { margin: 8px 12px 0; }
+.quiz-screen > .quiz-bar { margin: 8px 12px 0; }
+.quiz-screen > .question-card { margin: 8px 12px; max-height: 68vh; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.answer-keys { display: flex; gap: 8px; margin-top: 12px; justify-content: center; }
+.quiz-screen > .answer-keys { flex: 0 0 auto; margin: 8px 12px 0; padding-top: 4px; }
+.quiz-screen > .quiz-actions { position: static; left: auto; right: auto; bottom: auto; width: auto; max-width: none; margin: 12px; gap: 10px; background: transparent; border-top: none; box-shadow: none; padding: 0; flex-wrap: wrap; }
+html[data-theme="dark"] .quiz-screen > .quiz-actions { background: transparent; }
 /* v10.29: 全随机"确定"按钮的点击反馈——按下有缩放、点击后变绿显示「已确认 ✓」 */
 .exam-time-opt:active { transform: translateY(1px) scale(0.97); }
 #examRandomConfirmBtn.confirmed { background: #16a34a !important; color: #fff !important; border-color: #16a34a !important; }
@@ -338,10 +335,10 @@ html[data-theme="dark"] .quiz-screen > .quiz-actions { background: #111827; bord
   .home-hero .stats { gap: 4px; }
   .home-hero .stat-num { font-size: 20px; }
   .home-hero .stat-label { font-size: 11px; }
-  .question-card, .question-card-detail { padding: 16px; }
-  .question-text { font-size: 15px; line-height: 1.6; }
-  .option-text { font-size: 14px; line-height: 1.55; }
-  .option-item { padding: 11px 12px; }
+  .question-card, .question-card-detail { padding: 12px; }
+  .question-text { font-size: 14px; line-height: 1.5; }
+  .option-text { font-size: 13px; line-height: 1.45; }
+  .option-item { padding: 9px 10px; }
   .app-main { padding: 12px; padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
   .mode-card { padding: 16px; }
   .mode-icon { width: 44px; height: 44px; font-size: 22px; }
