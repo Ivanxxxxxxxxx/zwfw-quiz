@@ -1184,7 +1184,7 @@ function renderHome(main) {
           ) : ''))) +
         examSettingRow('题量', '固定题量：按所选组合出固定数量的题；无上限挑战：在限时内尽量多答，时间到自动交卷',
           (state.examMixMode === 'random'
-            ? '<span class="exam-custom-row"><label class="exam-custom-item"><span>固定</span><input type="number" min="1" max="999" value="' + state.examRandomTotal + '" onchange="selectExamRandomTotal(this.value)" onclick="event.stopPropagation()"></label><span class="exam-custom-hint">题（从所有题型混合随机抽选）</span></span>'
+            ? '<span class="exam-custom-row"><label class="exam-custom-item"><span>固定</span><input id="examRandomTotalInput" type="number" min="1" max="999" value="' + state.examRandomTotal + '" onchange="selectExamRandomTotal(this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();selectExamRandomTotal(this.value);}" onclick="event.stopPropagation()"></label><button class="exam-time-opt" type="button" onclick="applyExamRandomTotal()">确定</button><span class="exam-custom-hint">题（从所有题型混合随机抽选）</span></span>'
             : '<button class="exam-time-opt' + (state.examQCount !== 0 ? ' active' : '') + '" data-qcount="' + examFixedTotal() + '" onclick="selectExamQCount(' + examFixedTotal() + ', this)">固定 ' + examFixedTotal() + ' 题</button>') +
           '<button class="exam-time-opt' + (state.examQCount === 0 ? ' active' : '') + '" data-qcount="0" onclick="selectExamQCount(0, this)">无上限挑战</button>') +
         examSettingRow('限时', '考试总时长，时间到自动交卷（无上限挑战必须选择限时）',
@@ -1770,8 +1770,15 @@ function selectExamRandomTotal(val) {
   if (n > 999) n = 999;
   state.examRandomTotal = n;
   try { localStorage.setItem('zwfw_examRandomTotal', String(n)); } catch (e) {}
-  if (state.examQCount !== 0) { state.examQCount = n; try { localStorage.setItem('zwfw_examQCount', String(n)); } catch(e){} }
+  // v10.27: 全随机模式下该输入框即"题量"定义，输入即设为固定题量（去掉 examQCount!==0 守卫，避免与"无上限"冲突导致不生效）
+  state.examQCount = n;
+  try { localStorage.setItem('zwfw_examQCount', String(n)); } catch (e) {}
   render();
+}
+// v10.27: 全随机"固定题数"显式确认按钮——点击即读取输入框值并生效，移动端顺带收起键盘
+function applyExamRandomTotal() {
+  const inp = document.getElementById('examRandomTotalInput');
+  selectExamRandomTotal(inp ? inp.value : state.examRandomTotal);
 }
 // v9.2: 打乱单题选项顺序并同步重映射答案（key 仍为 A/B/C/D…）
 function shuffleQuestionOptions(q) {
