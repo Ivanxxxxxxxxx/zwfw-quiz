@@ -192,6 +192,11 @@ body.quiz-active { position: fixed; top: 0; left: 0; right: 0; height: 100vh; he
 .quiz-screen > .quiz-actions { flex: 0 0 auto; width: 100%; max-width: none; margin: 0; background: #f5f7fa; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid #e5e7eb; box-shadow: 0 -2px 8px rgba(0,0,0,0.04); }
 html[data-theme="dark"] .quiz-screen > .quiz-actions { background: #111827; border-top-color: #374151; }
 .answer-keys { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-start; }
+/* v10.29: ABCD 键作为答题屏常驻元素（题目卡与底部按钮之间），永远可见，不随题干长短跳动 */
+.quiz-screen > .answer-keys { flex: 0 0 auto; margin: 8px 12px 0; justify-content: center; padding-top: 4px; }
+/* v10.29: 全随机"确定"按钮的点击反馈——按下有缩放、点击后变绿显示「已确认 ✓」 */
+.exam-time-opt:active { transform: translateY(1px) scale(0.97); }
+#examRandomConfirmBtn.confirmed { background: #16a34a !important; color: #fff !important; border-color: #16a34a !important; }
 .answer-key-btn { width: 48px; height: 48px; border-radius: 50%; border: 2px solid #d1d5db; background: #f9fafb; color: #374151; font-size: 18px; font-weight: 700; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
 .answer-key-btn:hover { border-color: #3b82f6; background: #eff6ff; color: #1d4ed8; }
 .answer-key-btn.selected { border-color: #3b82f6; background: #3b82f6; color: #fff; }
@@ -1187,7 +1192,7 @@ function renderHome(main) {
           ) : ''))) +
         examSettingRow('题量', '固定题量：按所选组合出固定数量的题；无上限挑战：在限时内尽量多答，时间到自动交卷',
           (state.examMixMode === 'random'
-            ? '<span class="exam-custom-row"><label class="exam-custom-item"><span>固定</span><input id="examRandomTotalInput" type="number" min="1" max="999" value="' + state.examRandomTotal + '" onchange="selectExamRandomTotal(this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();selectExamRandomTotal(this.value);}" onclick="event.stopPropagation()"></label><button class="exam-time-opt" type="button" onclick="applyExamRandomTotal()">确定</button><span class="exam-custom-hint">题（从所有题型混合随机抽选）</span></span>'
+            ? '<span class="exam-custom-row"><label class="exam-custom-item"><span>固定</span><input id="examRandomTotalInput" type="number" min="1" max="999" value="' + state.examRandomTotal + '" onchange="selectExamRandomTotal(this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();applyExamRandomTotal();}" onclick="event.stopPropagation()"></label><button id="examRandomConfirmBtn" class="exam-time-opt" type="button" onclick="applyExamRandomTotal()">确定</button><span class="exam-custom-hint">题（从所有题型混合随机抽选）</span></span>'
             : '<button class="exam-time-opt' + (state.examQCount !== 0 ? ' active' : '') + '" data-qcount="' + examFixedTotal() + '" onclick="selectExamQCount(' + examFixedTotal() + ', this)">固定 ' + examFixedTotal() + ' 题</button>') +
           '<button class="exam-time-opt' + (state.examQCount === 0 ? ' active' : '') + '" data-qcount="0" onclick="selectExamQCount(0, this)">无上限挑战</button>') +
         examSettingRow('限时', '考试总时长，时间到自动交卷（无上限挑战必须选择限时）',
@@ -1779,9 +1784,17 @@ function selectExamRandomTotal(val) {
   render();
 }
 // v10.27: 全随机"固定题数"显式确认按钮——点击即读取输入框值并生效，移动端顺带收起键盘
+// v10.29: 点击后收起键盘 + 按钮短暂变绿显示「已确认 ✓」给出明确点击反馈
 function applyExamRandomTotal() {
   const inp = document.getElementById('examRandomTotalInput');
+  if (inp) inp.blur(); // 收起移动端键盘，给出"已点击"的明确反馈
   selectExamRandomTotal(inp ? inp.value : state.examRandomTotal);
+  const btn = document.getElementById('examRandomConfirmBtn');
+  if (btn) {
+    btn.textContent = '已确认 ✓';
+    btn.classList.add('confirmed');
+    setTimeout(function() { btn.textContent = '确定'; btn.classList.remove('confirmed'); }, 1200);
+  }
 }
 // v9.2: 打乱单题选项顺序并同步重映射答案（key 仍为 A/B/C/D…）
 function shuffleQuestionOptions(q) {
@@ -2229,9 +2242,28 @@ function renderQuiz(main) {
     '</div>';
   }
   html += '</div>';
-    // v7.0: ABCD buttons only shown in 'abcd' style
+    // v10.29: ABCD 键已移出可滚动题目卡，作为 quiz-screen 的常驻子元素渲染（见下方题卡闭合之后），永远可见、不随题干长短跳动
+
+  if (showAnswer && !isExam) { // v6.9: 考试模式不显示答案 box / 答案解析 / 考点来源；只保留选项对错高亮（绿/红）和 ✓/✗ mark
+    const isCorrect = isAnswerCorrect(q, userAns);
+    html += '<div class="answer-box ' + (isCorrect ? '' : 'wrong') + '">';
+    html += '<div class="answer-label ' + (isCorrect ? 'correct' : 'wrong') + '">' + (isCorrect ? '✓ 回答正确' : '✗ 回答错误') + '</div>';
+    html += '<div><strong>正确答案：</strong>' + escapeHtml(getAnswerText(q)) + '</div>';
+    if (!isCorrect) {
+      const userStr = userAns.slice().sort().join('') || '未作答';
+      html += '<div><strong>你的答案：</strong>' + escapeHtml(userStr) + '</div>';
+    }
+    html += '</div>';
+    if (q.analysis) {
+      html += '<div class="analysis-block"><div class="lbl">答案解析</div>' + escapeHtml(q.analysis) + '</div>';
+    }
+    if (q.source) {
+      html += '<div class="analysis-block"><div class="lbl">考点来源</div>' + escapeHtml(q.source) + '</div>';
+    }
+  }
+  html += '</div>';
+  // v10.29: ABCD 键作为 quiz-screen 的常驻元素（题目卡与底部按钮之间），永远在屏幕上可见，不被长题干挤出
   if (btnStyle === 'abcd') {
-// v6.17: ABCD answer keys bar —— 固定按 A→B→C→D 字母顺序排列，不随选项乱序/题目移动而改变位置
   const sortedKeys = q.options.map(function(o) { return o.key; }).sort();
   html += '<div class="answer-keys">';
   for (let ki = 0; ki < sortedKeys.length; ki++) {
@@ -2254,25 +2286,7 @@ function renderQuiz(main) {
   }
   html += '</div>';
   }
-
-  if (showAnswer && !isExam) { // v6.9: 考试模式不显示答案 box / 答案解析 / 考点来源；只保留选项对错高亮（绿/红）和 ✓/✗ mark
-    const isCorrect = isAnswerCorrect(q, userAns);
-    html += '<div class="answer-box ' + (isCorrect ? '' : 'wrong') + '">';
-    html += '<div class="answer-label ' + (isCorrect ? 'correct' : 'wrong') + '">' + (isCorrect ? '✓ 回答正确' : '✗ 回答错误') + '</div>';
-    html += '<div><strong>正确答案：</strong>' + escapeHtml(getAnswerText(q)) + '</div>';
-    if (!isCorrect) {
-      const userStr = userAns.slice().sort().join('') || '未作答';
-      html += '<div><strong>你的答案：</strong>' + escapeHtml(userStr) + '</div>';
-    }
-    html += '</div>';
-    if (q.analysis) {
-      html += '<div class="analysis-block"><div class="lbl">答案解析</div>' + escapeHtml(q.analysis) + '</div>';
-    }
-    if (q.source) {
-      html += '<div class="analysis-block"><div class="lbl">考点来源</div>' + escapeHtml(q.source) + '</div>';
-    }
-  }
-  html += '</div><div class="quiz-actions">';
+  html += '<div class="quiz-actions">';
   if (isRush) {
     // v6.13: 快答模式按钮——多选题需要"提交答案"；单选/判断/不定项点完即跳，不显示按钮
     if (q.type === 'duoxuan' && !state.submitted) {
