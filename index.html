@@ -98,8 +98,8 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 .fold-body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 260ms ease, opacity 220ms ease; }
 .fold-body.collapsed { grid-template-rows: 0fr; opacity: 0; }
 .fold-body > .fold-inner { overflow: hidden; min-height: 0; }
-.fold-inner { padding: 14px 16px; }
-.exam-setting-row { padding: 12px 14px; background: #f8fafc; border: 1px solid #eef2f7; border-radius: 10px; }
+.fold-inner { padding: 10px 14px; }
+.exam-setting-row { padding: 10px 12px; background: #f8fafc; border: 1px solid #eef2f7; border-radius: 10px; }
 .exam-setting-label { font-size: 14px; font-weight: 600; color: #374151; }
 .exam-setting-desc { font-size: 12px; color: #9ca3af; line-height: 1.5; margin: 3px 0 8px; }
 .exam-setting-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -990,13 +990,24 @@ function toggleFold(id, btn) {
   var key = id.replace(/^fold-/, '');
   var expanded = btn.getAttribute('aria-expanded') === 'true';
   var next = !expanded;
-  btn.setAttribute('aria-expanded', String(next));
-  var body = document.getElementById(id);
-  if (body) body.classList.toggle('collapsed', !next);
+  // v10.25: 手风琴效果——打开一个折叠面板时自动收起同页其它面板，避免配置区过长需要滚动
+  var heads = document.querySelectorAll('.fold-head');
   var raw = {};
   try { raw = JSON.parse(localStorage.getItem('zwfw_foldCollapsed') || '{}'); } catch (e) { raw = {}; }
   if (!raw || typeof raw !== 'object') raw = {};
-  raw[key] = !next;
+  for (var h = 0; h < heads.length; h++) {
+    var hid = heads[h].getAttribute('aria-controls');
+    var hbody = document.getElementById(hid);
+    if (hid === id) {
+      heads[h].setAttribute('aria-expanded', String(next));
+      if (hbody) hbody.classList.toggle('collapsed', !next);
+      raw[key] = !next; // true = 折叠
+    } else {
+      heads[h].setAttribute('aria-expanded', 'false');
+      if (hbody) hbody.classList.add('collapsed');
+      raw[hid.replace(/^fold-/, '')] = true;
+    }
+  }
   try { localStorage.setItem('zwfw_foldCollapsed', JSON.stringify(raw)); } catch (e) {}
 }
 /* v10.8: 深色模式——system 跟随系统，否则按用户选择设置 data-theme */
@@ -1143,7 +1154,7 @@ function renderHome(main) {
         '<button class="fold-head" type="button" aria-expanded="' + (isFoldCollapsed('exam') ? 'false' : 'true') + '" aria-controls="fold-exam" onclick="toggleFold(\'fold-exam\', this)"><span class="fold-title">模拟考试</span><span class="fold-arrow">▾</span></button>' +
         '<div class="fold-body' + (isFoldCollapsed('exam') ? ' collapsed' : '') + '" id="fold-exam"><div class="fold-inner">' +
       '<div class="settings-grid">' +
-        examSettingRow('题型组合', '标准组合：固定 100 题（60 单选 + 20 多选 + 20 判断）；自定义：自己设定各题型数量；全随机：所有题型混合随机抽取',
+        examSettingRow('题型组合', '标准组合：固定 100 题（60 单选 + 20 多选 + 20 判断）；自定义：自己设定各题型数量；全随机：从全部题型混合随机抽选，抽题数量在下方「题量」中设置',
           '<button class="exam-time-opt' + (state.examMixMode === 'standard' ? ' active' : '') + '" onclick="selectExamMix(\'standard\', this)">标准组合</button>' +
           '<button class="exam-time-opt' + (state.examMixMode === 'custom' ? ' active' : '') + '" onclick="selectExamMix(\'custom\', this)">自定义</button>' +
           '<button class="exam-time-opt' + (state.examMixMode === 'random' ? ' active' : '') + '" onclick="selectExamMix(\'random\', this)">全随机</button>',
@@ -1155,10 +1166,12 @@ function renderHome(main) {
               '<label class="exam-custom-item"><span>不定项</span><input type="number" min="0" max="999" value="' + (state.examCustom.budingxiang||0) + '" onchange="selectExamCustomCount(\'budingxiang\', this.value)" onclick="event.stopPropagation()"></label>' +
             '</div>'
           ) : (state.examMixMode === 'random' ? (
-            '<div class="exam-custom-row"><label class="exam-custom-item"><span>随机总数</span><input type="number" min="1" max="999" value="' + state.examRandomTotal + '" onchange="selectExamRandomTotal(this.value)" onclick="event.stopPropagation()"></label><span class="exam-custom-hint">从所有题型混合随机抽取</span></div>'
+            '<span class="exam-custom-hint">抽题数量请在下方「题量」中设置（见「固定」输入框，从所有题型混合随机抽选）</span>'
           ) : ''))) +
         examSettingRow('题量', '固定题量：按所选组合出固定数量的题；无上限挑战：在限时内尽量多答，时间到自动交卷',
-          '<button class="exam-time-opt' + (state.examQCount !== 0 ? ' active' : '') + '" data-qcount="' + examFixedTotal() + '" onclick="selectExamQCount(' + examFixedTotal() + ', this)">固定 ' + examFixedTotal() + ' 题</button>' +
+          (state.examMixMode === 'random'
+            ? '<span class="exam-custom-row"><label class="exam-custom-item"><span>固定</span><input type="number" min="1" max="999" value="' + state.examRandomTotal + '" onchange="selectExamRandomTotal(this.value)" onclick="event.stopPropagation()"></label><span class="exam-custom-hint">题（从所有题型混合随机抽选）</span></span>'
+            : '<button class="exam-time-opt' + (state.examQCount !== 0 ? ' active' : '') + '" data-qcount="' + examFixedTotal() + '" onclick="selectExamQCount(' + examFixedTotal() + ', this)">固定 ' + examFixedTotal() + ' 题</button>') +
           '<button class="exam-time-opt' + (state.examQCount === 0 ? ' active' : '') + '" data-qcount="0" onclick="selectExamQCount(0, this)">无上限挑战</button>') +
         examSettingRow('限时', '考试总时长，时间到自动交卷（无上限挑战必须选择限时）',
           '<button class="exam-time-opt' + (state.examTimeLimitChoice === 180 ? ' active' : '') + '" data-time="180" onclick="selectExamTime(180, this)">3 分钟</button>' +
@@ -2194,12 +2207,13 @@ function renderQuiz(main) {
   html += '</div>';
     // v7.0: ABCD buttons only shown in 'abcd' style
   if (btnStyle === 'abcd') {
-// v6.17: ABCD answer keys bar
+// v6.17: ABCD answer keys bar —— 固定按 A→B→C→D 字母顺序排列，不随选项乱序/题目移动而改变位置
+  const sortedKeys = q.options.map(function(o) { return o.key; }).sort();
   html += '<div class="answer-keys">';
-  for (let ki = 0; ki < q.options.length; ki++) {
-    const ok = q.options[ki];
-    const isUserAns = userAns.indexOf(ok.key) !== -1;
-    const isRightAns = (q.answer || '').indexOf(ok.key) !== -1;
+  for (let ki = 0; ki < sortedKeys.length; ki++) {
+    const key = sortedKeys[ki];
+    const isUserAns = userAns.indexOf(key) !== -1;
+    const isRightAns = (q.answer || '').indexOf(key) !== -1;
     let akCls = 'answer-key-btn';
     if (locked) {
       akCls += ' locked';
@@ -2212,7 +2226,7 @@ function renderQuiz(main) {
     } else if (isUserAns) {
       akCls += ' selected';
     }
-    html += '<button class="' + akCls + '" onclick="selectOption(\'' + ok.key + '\',' + (isMulti ? 'true' : 'false') + ')"' + (locked ? ' disabled' : '') + '>' + ok.key + '</button>';
+    html += '<button class="' + akCls + '" onclick="selectOption(\'' + key + '\',' + (isMulti ? 'true' : 'false') + ')"' + (locked ? ' disabled' : '') + '>' + key + '</button>';
   }
   html += '</div>';
   }
@@ -2852,11 +2866,11 @@ function renderExamResult(main) {
     html = '<div class="result-card">' +
       '<div class="result-score ' + (passed ? 'pass' : 'fail') + '">' + r.score + '</div>' +
       '<div class="result-status ' + (passed ? 'pass' : 'fail') + '">' + (passed ? '🎉 恭喜通过' : '💪 继续努力') + '</div>' +
-      '<div class="result-tip">满分 ' + maxScore + ' 分，' + (r.passLine || 60) + ' 分及格。本次共 ' + r.total + ' 题，每题 1 分</div>' +
+      '<div class="result-tip">满分 ' + maxScore + ' 分，' + (r.passLine || 60) + ' 分及格。本次共 ' + r.total + ' 题，每题 1 分，正确率 ' + acc + '%，用时 ' + formatTime(r.time) + '</div>' +
       '<div class="result-stats">' +
         '<div class="result-stat correct"><div class="num">' + r.correct + '</div><div class="lbl">答对</div></div>' +
         '<div class="result-stat wrong"><div class="num">' + r.wrong + '</div><div class="lbl">答错</div></div>' +
-        '<div class="result-stat total"><div class="num">' + formatTime(r.time) + '</div><div class="lbl">用时</div></div>' +
+        '<div class="result-stat total"><div class="num">' + acc + '%</div><div class="lbl">正确率</div></div>' +
       '</div>' +
     '</div>';
   }
