@@ -195,6 +195,11 @@ html.quiz-active, body.quiz-active { overflow: visible; }
 html[data-theme="dark"] .quiz-footer { background: #111827; border-top-color: #374151; }
 .quiz-footer .answer-keys { margin: 0 0 8px; }
 .quiz-footer .quiz-actions { position: static; left: auto; right: auto; bottom: auto; width: 100%; max-width: 800px; margin: 0 auto; gap: 10px; background: transparent; border-top: none; box-shadow: none; padding: 0; flex-wrap: wrap; }
+/* v10.33: 仅 ABCD 键模式生效——footer 改一行：左侧 ABCD 键、右侧导航按钮；导航块更紧凑；选项卡模式不受影响 */
+.quiz-footer.has-abcd { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.quiz-footer.has-abcd .answer-keys { margin: 0; flex: 1 1 auto; justify-content: flex-start; }
+.quiz-footer.has-abcd .quiz-actions { width: auto; max-width: none; flex: 0 0 auto; }
+.quiz-footer.has-abcd .quiz-actions .btn { flex: 0 0 auto; min-height: 38px; padding: 8px 14px; font-size: 14px; }
 html[data-theme="dark"] .quiz-footer .quiz-actions { background: transparent; }
 /* v10.29: 全随机"确定"按钮的点击反馈——按下有缩放、点击后变绿显示「已确认 ✓」 */
 .exam-time-opt:active { transform: translateY(1px) scale(0.97); }
@@ -2265,7 +2270,9 @@ function renderQuiz(main) {
   }
   html += '</div>';
   // v10.32: ABCD 键 + 导航按钮合并进固定底栏 quiz-footer，永远钉在屏幕底部，不随题目跳动
-  html += '<div class="quiz-footer">';
+  // v10.33: 仅在 ABCD 键模式下给 footer 加 has-abcd，使 ABCD 键与导航按钮同行；选项卡模式不生效
+  const footerCls = (btnStyle === 'abcd') ? 'quiz-footer has-abcd' : 'quiz-footer';
+  html += '<div class="' + footerCls + '">';
   if (btnStyle === 'abcd') {
   const sortedKeys = q.options.map(function(o) { return o.key; }).sort();
   html += '<div class="answer-keys">';
