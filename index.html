@@ -182,7 +182,8 @@ html[data-theme="dark"] .quiz-actions { background: linear-gradient(transparent,
 /* v10.26: 答题界面锁屏——整页不滚动，仅中间题目卡内部滚动，底部按钮常驻可见
    v10.28: 改用固定定位 + flex 逐级收口，不再依赖 height:100% 百分比链（移动端 100vh 含地址栏区域会导致收口失败、整页被撑开滚动） */
 html.quiz-active { overflow: hidden; }
-body.quiz-active { position: fixed; top: 0; left: 0; right: 0; height: 100vh; height: 100dvh; overflow: hidden; }
+/* v10.30: 用 top/right/bottom/left:0 让 body 精确等于真实视口，彻底不依赖 100vh/100dvh（移动端地址栏、iframe 预览里 100vh 比可见区高，会把 flex 链撑高、abcd键被裁切看不见） */
+body.quiz-active { position: fixed; top: 0; left: 0; right: 0; bottom: 0; min-height: 0; overflow: hidden; }
 .app-main.quiz-active { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 0; max-width: none; overflow: hidden; }
 .quiz-screen { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; box-sizing: border-box; }
 .quiz-screen > .exam-timer-bar,
